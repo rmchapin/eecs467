@@ -1,0 +1,18 @@
+The two log files here contain the normal sensor data from the robot and
+a ground-truth pose. A ground-truth pose exists for each laser scan.
+
+An image of the final map and trajectory is provided for each dataset.
+
+Datasets:
+
+* empty_environment: A simple environment with no obstacles in it. The robot
+                     can always see the full extent of the environment.
+
+* figure_eight: An environment with two obstacles (garbage cans) blocking the
+                robot's field of view. The robot drives a figure-8 around the
+                obstacles. Significant wheel slippage occurs at least once.
+
+
+The ground-truth pose comes from our own implementation of A1 -- perhaps
+a better name is simply the SLAM pose.  We hope that all students surpass
+our SLAM implementation by the end of A1.
