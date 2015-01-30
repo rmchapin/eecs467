@@ -20,7 +20,6 @@ class maebot_motor_feedback_t
 
         int32_t    encoder_right_ticks;
 
-        /// Only lowest 16 bits are significant (no unsigned int types in lcm)
         int32_t    motor_current_left;
 
         int32_t    motor_current_right;

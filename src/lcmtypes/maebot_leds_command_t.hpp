@@ -16,28 +16,16 @@ class maebot_leds_command_t
     public:
         int64_t    utime;
 
-        /**
-         * These take hex rgb values, each octet caps at 0x1F.
-         * Form: 0xrrggbb. The MSB is ignored.
-         */
         int32_t    top_rgb_led_left;
 
         int32_t    top_rgb_led_right;
 
-        /**
-         * XXX: These are on the top of the 'bottom board'. Maybe better naming?
-         * Also, these could be bitmapped into a single byte.
-         */
         int8_t     bottom_led_left;
 
         int8_t     bottom_led_middle;
 
         int8_t     bottom_led_right;
 
-        /**
-         * These default to on, no message is required to use the line sensors.
-         * However, this is provided as a means to save a tiny amount of energy by shutting them off.
-         */
         int8_t     line_sensor_leds;
 
     public:

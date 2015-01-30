@@ -16,11 +16,6 @@ class maebot_motor_command_t
     public:
         int64_t    utime;
 
-        /**
-         * Between -1.0 and 1.0
-         * -1.0 = maximum reverse speed
-         * 1.0  = maximum forward speed
-         */
         float      motor_left_speed;
 
         float      motor_right_speed;
