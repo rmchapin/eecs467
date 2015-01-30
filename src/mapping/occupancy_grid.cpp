@@ -94,5 +94,46 @@ void OccupancyGrid::fromLCM(const maebot_occupancy_grid_t& gridMessage)
     width_          = gridMessage.width;
     cells_          = gridMessage.cells;
 }
+/*static void update_grid()
+{
+	double mae_t = state->pose_time;
+	double mae_x = state->pose_x_curr;
+	double mae_y = state->pose_y_curr;
+	double mae_th = state->pose_heading_curr;
+	int num_rays = state->num_ranges;
+
+	for (int ray = 0; ray < num_rays; ray++)
+	{
+		//interpolate (or extrapolate) mae_values
+
+		double laser_t = state->lidar_times[ray];
+		double laser_m = state->lidar_ranges[ray];
+		double laser_th = state->lidar_thetas[ray];
+
+		double cos_th = cos(mae_th + laser_th);
+		double sin_th = cos(mae_th + laser_th);
+
+		for (double sample_m = SAMPLE_SPACING; sample_m < laser_m; sample_m += SAMPLE_SPACING)
+		{
+			double sample_x = mae_x + (sample_m*cos_th);
+			double sample_y = mae_y + (sample_m*sin_th);
+			
+			eecs467::Point<int> sample_cell = global_position_to_grid_cell(eecs467::Point<double>(sample_x, sample_y), state->grid);
+			if (!state->grid.isCellInGrid(sample_cell.x, sample_cell.y)) { break; }
+
+			int8_t odds = state->grid.logOdds(sample_cell.x, sample_cell.y);
+			odds -= FREE_ADJUST_FACTOR;
+			state->grid.setLogOdds(sample_cell.x, sample_cell.y, odds);
+		}
+
+		//positive adjust for ray termination cell
+		double laser_term_x = mae_x + laser_m*cos_th;
+		double laser_term_y = mae_y + laser_m*sin_th;
+		eecs467::Point<int> laser_term_cell = global_position_to_grid_cell(eecs467::Point<double>(laser_term_x, laser_term_y), state->grid);
+		int8_t odds = state->grid.logOdds(laser_term_cell.x, laser_term_cell.y);
+		odds += OCCUPIED_ADJUST_FACTOR;
+		state->grid.setLogOdds(laser_term_cell.x, laser_term_cell.y, odds);
+	}
+}*/
 
 } // namespace eecs467
