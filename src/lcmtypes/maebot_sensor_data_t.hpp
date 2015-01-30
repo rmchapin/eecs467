@@ -22,12 +22,10 @@ class maebot_sensor_data_t
 
         int64_t    gyro_int[3];
 
-        /// Only lowest 16 bits is significant (no unsigned int types in lcm)
         int32_t    line_sensors[3];
 
         int32_t    range;
 
-        /// NOTE: Could move these somewhere else? Wanted to avoid proliferating types.
         int8_t     user_button_pressed;
 
         int8_t     power_button_pressed;

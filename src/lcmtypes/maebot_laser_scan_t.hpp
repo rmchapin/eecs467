@@ -17,23 +17,14 @@ class maebot_laser_scan_t
     public:
         int64_t    utime;
 
-        /**
-         * Measured range in meters
-         * Measurement angle in radians
-         * Measurement time was taken in usec
-         * Measurement intensity -- unitless
-         */
         int32_t    num_ranges;
 
         std::vector< float > ranges;
 
-        /// [m]
         std::vector< float > thetas;
 
-        /// [rad]
         std::vector< int64_t > times;
 
-        /// [usec]
         std::vector< float > intensities;
 
     public:

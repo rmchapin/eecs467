@@ -20,16 +20,12 @@ class dynamixel_status_t
 
         double     position_radians;
 
-        /// position of servo in radians, [0, 5.2333]
         double     speed;
 
-        /// unsigned measure of angular velocity, [0, 1]
         double     load;
 
-        /// measure of motor current, [-1, 1]
         double     voltage;
 
-        /// supply voltage (volts)
         double     temperature;
 
     public:
