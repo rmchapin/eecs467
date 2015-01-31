@@ -58,7 +58,7 @@ public:
 	getopt_t* gopt;
 
 	//pose
-    maebot_pose_handler pose_handler;
+    //maebot_pose_handler pose_handler;
 	//double pose_x_curr, pose_y_curr, pose_heading_curr, pose_time;
 	maebot_pose_data pose_curr;
     std::vector<maebot_pose_data> pose_data;
@@ -66,7 +66,7 @@ public:
 	pthread_mutex_t pose_points_mutex;
 
 	// lidar
-    maebot_laser_scan_handler laser_scan_handler;
+    //maebot_laser_scan_handler laser_scan_handler;
 	//std::vector<float> lidar_thetas;
 	//std::vector<int64_t> lidar_times;
 	//std::vector<float> lidar_ranges;
@@ -87,6 +87,7 @@ public:
     //grid
 	//eecs467::OccupancyGrid grid;
 };
+
 
 void* run_lcm(void *input){
     //pthread_mutex_lock(&(state->run_mutex));
@@ -111,7 +112,6 @@ static void pose_data_handler (const lcm::ReceiveBuffer* rbuf, const std::string
     pthread_mutex_lock(&state->pose_points_mutex);
     state->pose_data.push_back(state->pose_curr);
 	pthread_mutex_unlock(&state->pose_points_mutex);
-    //printf("%d\n",state->pose_data.size());
 }
 
 /*static void * pose_thread(void* arg){
@@ -177,11 +177,11 @@ static void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::strin
 static void draw(state_t* state, vx_world_t* world){    
     // draw intended route
     vx_buffer_t *wrld = vx_world_get_buffer(world, "origin");
-    float x0 = 0*15,y0 = 0*15,x1 = 0.6096*15,y1=0*15,x2 = 0.6096*15,y2 = -0.9144*15,x3 = 0*15,y3 = -0.9144*15;
-    float origin_pts[] = {x0,y0,0,x1,y1,0,x1,y1,0,x2,y2,0,x2,y2,0,x3,y3,0,x3,y3,0,x0,y0,0};
-    int origin_pts_size = 8;
-    vx_resc_t *origin_verts = vx_resc_copyf(origin_pts, origin_pts_size*3);
-    vx_buffer_add_back(wrld, vxo_lines(origin_verts, origin_pts_size, GL_LINES, vxo_lines_style(vx_orange, 2.0f)));
+    //float x0 = 0*15,y0 = 0*15,x1 = 0.6096*15,y1=0*15,x2 = 0.6096*15,y2 = -0.9144*15,x3 = 0*15,y3 = -0.9144*15;
+    //float origin_pts[] = {x0,y0,0,x1,y1,0,x1,y1,0,x2,y2,0,x2,y2,0,x3,y3,0,x3,y3,0,x0,y0,0};
+    //int origin_pts_size = 8;
+    //vx_resc_t *origin_verts = vx_resc_copyf(origin_pts, origin_pts_size*3);
+    //vx_buffer_add_back(wrld, vxo_lines(origin_verts, origin_pts_size, GL_LINES, vxo_lines_style(vx_orange, 2.0f)));
     //vx_buffer_swap(vx_world_get_buffer(world, "origin"));
     // make legend
     int lgnd_pts = 2;
@@ -210,70 +210,34 @@ static void draw(state_t* state, vx_world_t* world){
 }
 
 void* render_loop(void* data) {
-
-	/*while (1) {
-		int vec_size;
-		vx_resc_t* verts;
-		// drawing odometry path
-		// if (getopt_get_bool(state->gopt, "paths")) {
-		// 	pthread_mutex_lock(&state->odo_points_mutex);
-		// 	vec_size = state->odo_points.size();
-		// 	verts = vx_resc_copyf((state->odo_points).data(), vec_size);
-		// 	pthread_mutex_unlock(&state->odo_points_mutex);
-		// 	vx_buffer_add_back(vx_world_get_buffer(state->world,"draw_thread"),
-		// 		vxo_lines(verts, vec_size / 3, GL_LINES, vxo_lines_style(vx_red, 2.0f)));
-
-		
-		// }
-
-		// if (getopt_get_bool(state->gopt, "scans")) {
-		// 	pthread_mutex_lock(&state->scans_mutex);
-		// 	for (unsigned int i = 0; i < state->scans_lidar.size(); ++i) {
-		// 		vec_size = state->scans_lidar[i].size();
-		// 		// printf("vec_size: %d\n", vec_size);
-		// 		verts = vx_resc_copyf((state->scans_lidar[i]).data(), vec_size);
-		// 		vx_buffer_add_back(vx_world_get_buffer(state->world,"draw_thread"),
-		// 			vxo_lines(verts, vec_size / 3, GL_LINES,
-		// 				vxo_lines_style(vx_green, 2.0f)));
-		// 	}
-		// 	pthread_mutex_unlock(&state->scans_mutex);
-
-		// 	for (unsigned int i = 0; i < state->images.size(); ++i) {
-		// 		image_u32_t* image = state->images[i];
-		// 		vx_object_t* obj = vxo_image_texflags(vx_resc_copyui(image->buf,
-		// 			image->stride*image->height),
-		// 			image->width, image->height, image->stride,
-		// 			GL_RGBA, VXO_IMAGE_FLIPY,
-		// 			VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
-
-		// 		int x_loc = -2250 + (i * 1500);
-		// 		int y_loc = -2000 - image->height;
-		// 		vx_buffer_add_back(vx_world_get_buffer(state->world,"draw_thread"),
-		// 			vxo_chain(vxo_mat_scale(1.0/image->height),
-		// 			vxo_mat_translate3(x_loc, y_loc, 0), obj));
-		// 	}
-		// }
-
-		vx_buffer_swap(vx_world_get_buffer(state->world,"draw_thread"));
-		usleep(1000);
-	}*/
+	
     state_t * state = (state_t*) data;
     while(1){
         vx_buffer_t *buf = vx_world_get_buffer(state->world,"pose_data");
-        //for(int i = 0; i < state->pose_data.size()-2;++i){
-        //    float pts[] = {state->pose_data[i].get_x_pos(),state->pose_data[i].get_y_pos(),0.0,
-        //                    state->pose_data[i+1].get_x_pos(),state->pose_data[i+1].get_y_pos(),0.0};
-            //float pts[] = {0*15,0*15,0,15,15,0};
-        //    vx_resc_t *verts = vx_resc_copyf(pts,6);
-        //    vx_buffer_add_back(buf,vxo_lines(verts,1,GL_LINES,vxo_lines_style(vx_red,2.0f)));
-        //}
+        if(state->pose_data.size() > 1){
+            for(int i = 1; i < state->pose_data.size();++i){
+                float pts[] = {state->pose_data[i].get_x_pos()*15,state->pose_data[i].get_y_pos()*15,0.0,
+                                state->pose_data[i-1].get_x_pos()*15,state->pose_data[i-1].get_y_pos()*15,0.0};
+                //float pts[] = {0*15,0*15,0,15,15,0};
+                vx_resc_t *verts = vx_resc_copyf(pts,6);
+                vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
+            }
+            std::vector<eecs467::Point<float>> end = state->lidar_curr.get_end_points();
+            maebot_pose_data p = state->lidar_curr.get_curr_pose();
+            for(int i=0;i<state->lidar_curr.get_num_ranges();i+=10){
+                float pts[] = {p.get_x_pos()*15,p.get_y_pos()*15,0.0,
+                               end[i].x*15,end[i].y*15,0.0};
+                vx_resc_t *verts = vx_resc_copyf(pts,6);
+                vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,1.0f)));
+            }
+        }
         char buffer[50];
         sprintf(buffer,"<<center, #000000>> pose_size: %d \n",state->pose_data.size());
         vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
-        vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_CENTER, vxo_chain(vxo_mat_translate2(0, 0), vxo_mat_scale(0.6), data_size)));
+        vx_buffer_add_back(buf,vxo_pix_coords(VX_ORIGIN_CENTER,vxo_chain(vxo_mat_translate2(0,-150),vxo_mat_scale(0.8),data_size)));
         vx_buffer_swap(buf);
-        printf("%d\n",state->pose_data.size());
-        usleep(50000);
+        //printf("%d\n",state->pose_data.size());
+        usleep(5000);
     }
 	return NULL;
 }
@@ -377,7 +341,27 @@ int main(int argc, char ** argv)
 		printf("couldn't parse getopt\n");
 		exit(1);
 	}
+    
+    if(!state->lcm.good()){
+        printf("LCM not good, exit\n");
+        exit(1);
+    }
+	//state->lcm.subscribe("MAEBOT_LASER_SCAN", &maebot_laser_scan_handler::handleMessage, &state->laser_scan_handler);
 
+	//state->lcm.subscribe("MAEBOT_POSE", &maebot_pose_handler::handleMessage, &state->pose_handler);
+
+    state->lcm.subscribeFunction("MAEBOT_POSE",pose_data_handler,state);
+    state->lcm.subscribeFunction("MAEBOT_LASER_SCAN", laser_scan_handler,state);
+	//pthread_t laser_thread_pid;
+	//pthread_create(&laser_thread_pid, NULL, laser_scan_thread, NULL);
+
+	//pthread_t pose_thread_pid;
+	//pthread_create(&pose_thread_pid, NULL, pose_thread, NULL);
+
+    pthread_t lcm_thread_pid;
+    pthread_create(&lcm_thread_pid,NULL,run_lcm,state);
+    //while(state->lcm.handle() == 0);
+	printf("All subscribed\n");
 
 	//pthread_t draw_thread_pid;
 	//pthread_create(&draw_thread_pid, NULL, draw_thread, NULL);
@@ -401,27 +385,7 @@ int main(int argc, char ** argv)
 	vx_gtk_display_source_destroy(appwrap);
     pthread_join(state->animate_thread,NULL);
     
-    if(!state->lcm.good()){
-        printf("LCM not good, exit\n");
-        exit(1);
-    }
-	//state->lcm.subscribe("MAEBOT_LASER_SCAN", &maebot_laser_scan_handler::handleMessage, &state->laser_scan_handler);
-
-	//state->lcm.subscribe("MAEBOT_POSE", &maebot_pose_handler::handleMessage, &state->pose_handler);
-
-    state->lcm.subscribeFunction("MAEBOT_POSE",pose_data_handler,state);
-    state->lcm.subscribeFunction("MAEBOT_LASER_SCAN", laser_scan_handler,state);
-	//pthread_t laser_thread_pid;
-	//pthread_create(&laser_thread_pid, NULL, laser_scan_thread, NULL);
-
-	//pthread_t pose_thread_pid;
-	//pthread_create(&pose_thread_pid, NULL, pose_thread, NULL);
-
-    pthread_t lcm_thread_pid;
-    pthread_create(&lcm_thread_pid,NULL,run_lcm,state);
-    //while(state->lcm.handle() == 0);
-	printf("All subscribed\n");
-    //while(1);
+       //while(1);
 	state_destroy(state);
     //delete state;
 	vx_global_destroy();
