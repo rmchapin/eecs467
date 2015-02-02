@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <lcm/lcm-cpp.hpp>
 #include <vector>
+#include <deque>
 
 // core api
 #include "vx/vx.h"
@@ -29,13 +30,13 @@
 //#define METERS_PER_TICK 0.00020944 // meters
 //#define ADC_PER_METER_PER_SECOND_PER_SECOND 1670.13251784
 //define ADC_PER_RADIANS_PER_SECOND 7505.74711621
-//RMC - grid stuff
+
 #include "mapping/occupancy_grid.hpp"
 #include "mapping/occupancy_grid_utils.hpp"
 #include <math/point.hpp>
 #define GRID_WIDTH_M 10
 #define GRID_HEIGHT_M 10
-#define CELL_WIDTH_M 0.5
+#define CELL_WIDTH_M 0.05
 #define SAMPLE_SPACING 0.005
 #define FREE_ADJUST_FACTOR 1
 #define OCCUPIED_ADJUST_FACTOR 3.5
@@ -58,36 +59,120 @@ public:
 	getopt_t* gopt;
 
 	//pose
-    //maebot_pose_handler pose_handler;
-	//double pose_x_curr, pose_y_curr, pose_heading_curr, pose_time;
-	maebot_pose_data pose_curr;
-    std::vector<maebot_pose_data> pose_data;
-	pthread_mutex_t pose_curr_mutex;
-	pthread_mutex_t pose_points_mutex;
+	int pose_index = 0;
+    std::deque<maebot_pose_data> pose_data;
+	pthread_mutex_t pose_mutex;
 
 	// lidar
-    //maebot_laser_scan_handler laser_scan_handler;
-	//std::vector<float> lidar_thetas;
-	//std::vector<int64_t> lidar_times;
-	//std::vector<float> lidar_ranges;
-	//std::vector<float> intensities; //uncomment if needed
-	//double num_ranges;
-    maebot_laser_data lidar_curr;
-	bool scan_complete;
+    maebot_laser_data lasers;
+    laser_array other_lasers;
 	pthread_mutex_t scans_mutex;
 
     // vx stuff	
 	int running;
-	image_u32_t *img;
 	vx_application_t app;
 	vx_world_t * world;
 	zhash_t * layers;
 	pthread_mutex_t mutex; // for accessing the arrays
 	pthread_t animate_thread;
-    //grid
-	//eecs467::OccupancyGrid grid;
+
+	eecs467::OccupancyGrid grid;
+	image_u8_t *image_buf;
 };
 
+maebot_pose_data interpolate(int64_t time, state_t * state){
+
+    //find pose pointers that lazer ray lies between
+    maebot_pose_data data1;
+    maebot_pose_data data2;
+
+    for(std::deque<maebot_pose_data>::iterator it = state->pose_data.end() -1; 
+        it >= state->pose_data.begin(); --it){
+
+        if(it->get_timestamp() < time){
+            data2 = (*it);
+            data1 = *(++it);
+            break;
+        }
+
+    }
+
+    //data 2 is old, data 1 is most recent
+    //interpolation
+    double diff_x = data1.get_x_pos() - data2.get_x_pos();
+    double diff_y = data1.get_y_pos() - data2.get_y_pos();
+    double diff_time = data1.get_timestamp() - data2.get_timestamp();
+    double diff_theta = data1.get_theta() - data2.get_theta();
+
+    double fraction = (time-data2.get_timestamp())/ diff_time;
+    double calc_x = (diff_x*fraction)+ data2.get_x_pos();
+    double calc_y = (diff_y*fraction)+ data2.get_y_pos();
+    double calc_theta = (diff_theta*fraction)+ data2.get_theta();
+
+    //creates return variable
+    maebot_pose_data temp = maebot_pose_data(time,
+            calc_x,
+            calc_y,
+            calc_theta);
+
+    return temp;
+
+}
+
+void update_grid(maebot_pose_data pose, float laser_th, float range, eecs467::OccupancyGrid grid)
+{
+	int64_t mae_t = pose.get_timestamp();
+	double mae_x = pose.get_x_pos();
+	double mae_y = pose.get_y_pos();
+	double mae_th = pose.get_theta();
+
+	double cos_th = cos(mae_th - laser_th);
+	double sin_th = cos(mae_th - laser_th);
+
+	for (double sample_m = SAMPLE_SPACING; sample_m < range; sample_m += SAMPLE_SPACING)
+	{
+		double sample_x = mae_x + (sample_m*cos_th);
+		double sample_y = mae_y + (sample_m*sin_th);
+			
+		eecs467::Point<int> sample_cell = global_position_to_grid_cell(eecs467::Point<double>(sample_x, sample_y), grid);
+		if (grid.isCellInGrid(sample_cell.x, sample_cell.y))
+        {
+    		int8_t odds = grid.logOdds(sample_cell.x, sample_cell.y);
+    		odds -= FREE_ADJUST_FACTOR;
+    		grid.setLogOdds(sample_cell.x, sample_cell.y, odds);
+        }
+	}
+
+	//positive adjust for ray termination cell
+	double laser_term_x = mae_x + range*cos_th;
+	double laser_term_y = mae_y + range*sin_th;
+	eecs467::Point<int> laser_term_cell = global_position_to_grid_cell(eecs467::Point<double>(laser_term_x, laser_term_y), grid);
+	
+    if (grid.isCellInGrid(laser_term_cell.x, laser_term_cell.y))
+    {
+        int8_t odds = grid.logOdds(laser_term_cell.x, laser_term_cell.y);
+    	odds += OCCUPIED_ADJUST_FACTOR;
+    	grid.setLogOdds(laser_term_cell.x, laser_term_cell.y, odds);
+    }
+}
+
+void* compute_thread(void *input)
+{
+	state_t* state = (state_t*) input;
+
+	while (1)
+	{
+		while (state->other_lasers.size() > 1)
+		{
+			if (state->pose_data[state->pose_index].get_timestamp() > state->other_lasers.front_time())
+			{
+				maebot_pose_data calc_pose = interpolate(state->other_lasers.front_time(), state);
+				update_grid(calc_pose, state->other_lasers.front_theta(), state->other_lasers.front_range(), state->grid);
+				state->other_lasers.pop();
+			}
+		}
+	}
+}
 
 void* run_lcm(void *input){
     //pthread_mutex_lock(&(state->run_mutex));
@@ -103,76 +188,40 @@ void* run_lcm(void *input){
 
 static void pose_data_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_pose_t *msg, state_t* state){
     int res = system ("clear");
-    pthread_mutex_lock(&state->pose_curr_mutex);
-    state->pose_curr = maebot_pose_data(msg->utime,
-            msg->x,
-            msg->y,
-            msg->theta);
-	pthread_mutex_unlock(&state->pose_curr_mutex);
-    pthread_mutex_lock(&state->pose_points_mutex);
-    state->pose_data.push_back(state->pose_curr);
-	pthread_mutex_unlock(&state->pose_points_mutex);
+
+    //create pose object
+    maebot_pose_data new_pose = maebot_pose_data(msg->utime,
+									             msg->x,
+									             msg->y,
+									             msg->theta);
+
+    //lock mutex and push into state
+    pthread_mutex_lock(&state->pose_mutex);
+    state->pose_data.push_back(new_pose);
+    state->pose_index++;
+	pthread_mutex_unlock(&state->pose_mutex);
 }
-
-/*static void * pose_thread(void* arg){
-	pthread_mutex_lock(&state->pose_curr_mutex);
-	//state->pose_x_curr = state->pose_handler.get_x_pos();
-	//state->pose_y_curr = state->pose_handler.get_y_pos();
-	//state->pose_heading_curr = state->pose_handler.get_theta();
-	//state->pose_time = state->pose_handler.get_timestamp();
-    state->pose_curr = maebot_pose_data(state->pose_handler.get_timestamp(),
-            state->pose_handler.get_x_pos(),
-            state->pose_handler.get_y_pos(),
-            state->pose_handler.get_theta());
-	pthread_mutex_unlock(&state->pose_curr_mutex);
-
-
-	pthread_mutex_lock(&state->pose_points_mutex);
-	//state->pose_points.push_back(state->pose_x_curr);
-	//state->pose_points.push_back(state->pose_y_curr);
-	//state->pose_points.push_back(0);
-	//state->pose_points.push_back(state->pose_x_curr);
-	//state->pose_points.push_back(state->pose_y_curr);
-	//state->pose_points.push_back(0);
-    state->pose_data.push_back(state->pose_curr);
-	pthread_mutex_unlock(&state->pose_points_mutex);
-    fprintf(fp_pose,"%f %f %f\n",state->pose_handler.get_x_pos(),state->pose_handler.get_y_pos(),state->pose_handler.get_theta());
-}*/
 
 static void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg, state_t *state){
     int res = system("clear");
-    //pthread_mutex_lock(&state->scans_mutex);
-    state->lidar_curr = maebot_laser_data(msg->utime,
+    
+    pthread_mutex_lock(&state->scans_mutex);
+    state->lasers = maebot_laser_data(msg->utime,
            msg->num_ranges,
            msg->ranges,
            msg->thetas,
            msg->times,
            msg->intensities,
-           state->pose_curr);
-    state->scan_complete = true;
+           state->pose_data[state->pose_index]);
     //printf("%ld\n",msg->num_ranges);
-	//pthread_mutex_unlock(&state->scans_mutex);
-}
 
-/*static void * laser_scan_thread(void* arg) {
+	for (int i = 0; i < msg->num_ranges; i++)
+	{
+	    state->other_lasers.add_ray(msg->times[i], msg->thetas[i], msg->ranges[i]);
+	}
 
-	pthread_mutex_lock(&state->scans_mutex);
-	//state->num_ranges = state->laser_scan_handler.get_num_ranges();
-
-	//state->lidar_ranges = state->laser_scan_handler.get_ranges();
-	//state->lidar_thetas = state->laser_scan_handler.get_thetas();
-	//state->lidar_times = state->laser_scan_handler.get_times();
-	state->lidar_curr = maebot_laser_data(state->laser_scan_handler.get_timestamp(),
-           state->laser_scan_handler.get_num_ranges(),
-           state->laser_scan_handler.get_ranges(),
-           state->laser_scan_handler.get_thetas(),
-           state->laser_scan_handler.get_times(),
-           state->laser_scan_handler.get_intensities(),
-           state->pose_curr);
-    state->scan_complete = true;
 	pthread_mutex_unlock(&state->scans_mutex);
-
-}*/
+}
 
 static void draw(state_t* state, vx_world_t* world){    
     // draw intended route
@@ -209,10 +258,28 @@ static void draw(state_t* state, vx_world_t* world){
 
 }
 
+static uint8_t to_grayscale(uint8_t logOdds)
+{
+	return 127 - logOdds;
+}
+
+static void render_grid(state_t * state)
+{
+	for (size_t y = 0; y < state->grid.heightInCells(); y++)
+	{
+		for (size_t x = 0; x < state->grid.widthInCells(); x++)
+		{
+			state->image_buf->buf[(y * state->image_buf->stride) + x] = to_grayscale(state->grid.logOdds(x,y));
+		}
+	}
+
+}
+
 void* render_loop(void* data) {
 	
     state_t * state = (state_t*) data;
-    while(1){
+
+    while (1) {
         vx_buffer_t *buf = vx_world_get_buffer(state->world,"pose_data");
         if(state->pose_data.size() > 1){
             for(int i = 1; i < state->pose_data.size();++i){
@@ -222,22 +289,24 @@ void* render_loop(void* data) {
                 vx_resc_t *verts = vx_resc_copyf(pts,6);
                 vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
             }
-            std::vector<eecs467::Point<float>> end = state->lidar_curr.get_end_points();
-            maebot_pose_data p = state->lidar_curr.get_curr_pose();
-            for(int i=0;i<state->lidar_curr.get_num_ranges();i+=10){
+            std::vector<eecs467::Point<float>> end = state->lasers.get_end_points();
+            maebot_pose_data p = state->lasers.get_curr_pose();
+            for(int i=0;i<state->lasers.get_num_ranges();i+=10){
                 float pts[] = {p.get_x_pos()*15,p.get_y_pos()*15,0.0,
                                end[i].x*15,end[i].y*15,0.0};
                 vx_resc_t *verts = vx_resc_copyf(pts,6);
                 vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,1.0f)));
             }
         }
-        char buffer[50];
-        sprintf(buffer,"<<center, #000000>> pose_size: %d \n",state->pose_data.size());
-        vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
-        vx_buffer_add_back(buf,vxo_pix_coords(VX_ORIGIN_CENTER,vxo_chain(vxo_mat_translate2(0,-150),vxo_mat_scale(0.8),data_size)));
+
+        render_grid(state);
+        //vx_resc_t *vr = resc_copyui(state->image_buf,state->image_buf->stride*state->image_buf->height);
+        vx_object_t *vo = vxo_image_from_u8(state->image_buf,NULL,NULL);
+        vx_buffer_add_back(buf,vo);
+
         vx_buffer_swap(buf);
-        //printf("%d\n",state->pose_data.size());
         usleep(5000);
+    
     }
 	return NULL;
 }
@@ -273,8 +342,8 @@ static void display_started(vx_application_t * app, vx_display_t * disp)
 static void state_destroy(state_t * state)
 {
 
-	if (state->img != NULL)
-		image_u32_destroy(state->img);
+	/*if (state->img != NULL)
+		image_u32_destroy(state->img);*/
 
 	vx_world_destroy(state->world);
 	assert(zhash_size(state->layers) == 0);
@@ -290,6 +359,9 @@ static void state_destroy(state_t * state)
 	//lcm_destroy(state->lcm);
     pthread_mutex_lock(&(state->run_mutex));
     state->running = 0;
+
+    image_u8_destroy(state->image_buf);
+
     pthread_mutex_unlock(&(state->run_mutex));
     getopt_destroy(state->gopt);
 }
@@ -312,12 +384,8 @@ static state_t * state_create()
 		printf("run mutex init failed\n");
 		exit(1);
 	}
-	if (pthread_mutex_init(&state->pose_curr_mutex, NULL)) {
+	if (pthread_mutex_init(&state->pose_mutex, NULL)) {
 		printf("pose_curr mutex init failed\n");
-		exit(1);
-	}
-	if (pthread_mutex_init(&state->pose_points_mutex, NULL)) {
-		printf("pose_points_mutex init failed\n");
 		exit(1);
 	}
 	if (pthread_mutex_init(&state->scans_mutex, NULL)) {
@@ -325,9 +393,9 @@ static state_t * state_create()
 		exit(1);
 	}
 
-	//state->pose_y_curr = 0;
-	//state->pose_x_curr = 0;
-	//state->pose_heading_curr = 0;
+	state->grid = eecs467::OccupancyGrid(GRID_WIDTH_M, GRID_HEIGHT_M, CELL_WIDTH_M);
+	state->image_buf = image_u8_create(state->grid.widthInCells(), state->grid.heightInCells());
+
 	state->gopt = getopt_create();
 	return state;
 }
@@ -362,6 +430,9 @@ int main(int argc, char ** argv)
     pthread_create(&lcm_thread_pid,NULL,run_lcm,state);
     //while(state->lcm.handle() == 0);
 	printf("All subscribed\n");
+
+	pthread_t compute_thread_pid;
+    pthread_create(&compute_thread_pid,NULL,compute_thread,state);
 
 	//pthread_t draw_thread_pid;
 	//pthread_create(&draw_thread_pid, NULL, draw_thread, NULL);

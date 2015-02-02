@@ -17,6 +17,8 @@ LDFLAGS  = $(LDFLAGS_STD) \
 LIB_MAEBOT_DATA = $(LIB_PATH)/libmaebotdata.a
 LIB_MAEBOT_DATA_OBJ = maebot_data.o
 
+LIB_MAPPING = $(LIB_PATH)/libmapping.a
+
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 BIN_LCM_HANDLE_TEST = $(BIN_PATH)/lcm_handle_test
@@ -34,7 +36,7 @@ $(BIN_LCM_HANDLE_TEST): lcm_handle_test.o $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(BIN_MAEBOT_VX_A1): maebot_vx_a1.o $(LIBDEPS) $(LIB_MAEBOT_DATA)
+$(BIN_MAEBOT_VX_A1): maebot_vx_a1.o $(LIBDEPS) $(LIB_MAEBOT_DATA) $(LIB_MAPPING)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 

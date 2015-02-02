@@ -164,6 +164,8 @@ public:
     * fromLCM populates the grid using an LCM message. The current contents of the grid are erased.
     */
     void fromLCM(const maebot_occupancy_grid_t& gridMessage);
+
+
     
 private:
     

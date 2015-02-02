@@ -1,5 +1,6 @@
 #include <vector>
 #include <math/point.hpp>
+#include <deque>
 class maebot_pose_data{
 public:
     maebot_pose_data();
@@ -42,4 +43,45 @@ private:
     std::vector<eecs467::Point<float>> end_points;
 };
 
+class laser_array{
+public:
+    void add_ray(int64_t t, float th, float m)
+    {
+        times.push_back(t);
+        thetas.push_back(th);
+        ranges.push_back(m);
+    }
+
+    void pop()
+    {
+        times.pop_front();
+        thetas.pop_front();
+        ranges.pop_front();
+    }
+
+    int64_t front_time()
+    {
+        return times[0];
+    }
+
+    float front_theta()
+    {
+        return thetas[0];
+    }
+
+    float front_range()
+    {
+        return ranges[0];
+    }
+
+    int size()
+    {
+        return times.size();
+    }
+
+private:
+    std::deque<int64_t> times;
+    std::deque<float> thetas;
+    std::deque<float> ranges;
+};
 

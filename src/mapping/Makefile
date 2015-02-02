@@ -5,12 +5,14 @@ LDFLAGS  = $(LDFLAGS_STD)
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 LIB_MAPPING = $(LIB_PATH)/libmapping.a
+LIB_MAEBOT_DATA = $(LIB_PATH)/libmaebotdata.a
+
 LIBMAPPING_OBJS = \
 	occupancy_grid.o
 
 all: $(LIB_MAPPING)
 
-$(LIB_MAPPING): $(LIBMAPPING_OBJS) $(LIBDEPS)
+$(LIB_MAPPING): $(LIBMAPPING_OBJS) $(LIBDEPS) $(LIB_MAEBOT_DATA)
 	@echo "\t$@"
 	@ar rc $@ $^
 
