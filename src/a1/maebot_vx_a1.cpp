@@ -7,6 +7,7 @@
 #include <lcm/lcm-cpp.hpp>
 #include <vector>
 #include <deque>
+#include <iostream>
 
 // core api
 #include "vx/vx.h"
@@ -121,6 +122,9 @@ maebot_pose_data interpolate(int64_t time, state_t * state){
 
 void update_grid(maebot_pose_data pose, float laser_th, float range, eecs467::OccupancyGrid grid)
 {
+	static int add_count = 0;	
+	printf("updating grid for ray_%d: %f, %f\n", add_count, laser_th, range);
+	add_count++;	
 	int64_t mae_t = pose.get_timestamp();
 	double mae_x = pose.get_x_pos();
 	double mae_y = pose.get_y_pos();
@@ -137,7 +141,8 @@ void update_grid(maebot_pose_data pose, float laser_th, float range, eecs467::Oc
 		eecs467::Point<int> sample_cell = global_position_to_grid_cell(eecs467::Point<double>(sample_x, sample_y), grid);
 		if (grid.isCellInGrid(sample_cell.x, sample_cell.y))
         {
-    		int8_t odds = grid.logOdds(sample_cell.x, sample_cell.y);
+		//printf("cell: %d, %d is free\n", sample_cell.x, sample_cell.y);    		
+		int8_t odds = grid.logOdds(sample_cell.x, sample_cell.y);
     		odds -= FREE_ADJUST_FACTOR;
     		grid.setLogOdds(sample_cell.x, sample_cell.y, odds);
         }
@@ -150,7 +155,8 @@ void update_grid(maebot_pose_data pose, float laser_th, float range, eecs467::Oc
 	
     if (grid.isCellInGrid(laser_term_cell.x, laser_term_cell.y))
     {
-        int8_t odds = grid.logOdds(laser_term_cell.x, laser_term_cell.y);
+	printf("CELL: %d, %d is OCCUPIED!\n", laser_term_cell.x, laser_term_cell.y);    	
+	int8_t odds = grid.logOdds(laser_term_cell.x, laser_term_cell.y);
     	odds += OCCUPIED_ADJUST_FACTOR;
     	grid.setLogOdds(laser_term_cell.x, laser_term_cell.y, odds);
     }
@@ -162,15 +168,22 @@ void* compute_thread(void *input)
 
 	while (1)
 	{
-		while (state->other_lasers.size() > 1)
+		//while (state->other_lasers.size() > 1)
+		pthread_mutex_lock(&state->scans_mutex);
+		pthread_mutex_lock(&state->pose_mutex);
+		if (state->other_lasers.size() > 0)		
 		{
+			
 			if (state->pose_data[state->pose_index].get_timestamp() > state->other_lasers.front_time())
 			{
 				maebot_pose_data calc_pose = interpolate(state->other_lasers.front_time(), state);
 				update_grid(calc_pose, state->other_lasers.front_theta(), state->other_lasers.front_range(), state->grid);
 				state->other_lasers.pop();
+				printf("ray popped\n");
 			}
 		}
+		pthread_mutex_unlock(&state->scans_mutex);
+		pthread_mutex_unlock(&state->pose_mutex);
 	}
 }
 
@@ -187,7 +200,6 @@ void* run_lcm(void *input){
 }
 
 static void pose_data_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_pose_t *msg, state_t* state){
-    int res = system ("clear");
 
     //create pose object
     maebot_pose_data new_pose = maebot_pose_data(msg->utime,
@@ -203,8 +215,8 @@ static void pose_data_handler (const lcm::ReceiveBuffer* rbuf, const std::string
 }
 
 static void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg, state_t *state){
-    int res = system("clear");
     
+    static int add_count = 0;
     pthread_mutex_lock(&state->scans_mutex);
     state->lasers = maebot_laser_data(msg->utime,
            msg->num_ranges,
@@ -213,11 +225,15 @@ static void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::strin
            msg->times,
            msg->intensities,
            state->pose_data[state->pose_index]);
-    //printf("%ld\n",msg->num_ranges);
 
 	for (int i = 0; i < msg->num_ranges; i++)
 	{
 	    state->other_lasers.add_ray(msg->times[i], msg->thetas[i], msg->ranges[i]);
+if (i%20 == 0)
+{	
+printf("adding ray_%d: %f, %f\n", add_count, msg->thetas[i], msg->ranges[i]);
+}
+add_count++;
 	}
 
 	pthread_mutex_unlock(&state->scans_mutex);
@@ -258,7 +274,7 @@ static void draw(state_t* state, vx_world_t* world){
 
 }
 
-static uint8_t to_grayscale(uint8_t logOdds)
+static uint8_t to_grayscale(int8_t logOdds)
 {
 	return 127 - logOdds;
 }
@@ -436,7 +452,7 @@ int main(int argc, char ** argv)
 
 	//pthread_t draw_thread_pid;
 	//pthread_create(&draw_thread_pid, NULL, draw_thread, NULL);
-    draw(state,state->world);
+    /*draw(state,state->world);
     pthread_create(&state->animate_thread,NULL,render_loop,state);
 
 	gdk_threads_init();
@@ -454,9 +470,9 @@ int main(int argc, char ** argv)
 	gtk_main(); // Blocks as long as GTK window is open
 	gdk_threads_leave();
 	vx_gtk_display_source_destroy(appwrap);
-    pthread_join(state->animate_thread,NULL);
+    pthread_join(state->animate_thread,NULL);*/
     
-       //while(1);
+        while(1) {}
 	state_destroy(state);
     //delete state;
 	vx_global_destroy();
