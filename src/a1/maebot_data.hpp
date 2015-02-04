@@ -1,3 +1,5 @@
+#ifndef MAEBOT_DATA
+#define MAEBOT_DATA
 #include <vector>
 #include <math/point.hpp>
 #include <deque>
@@ -18,6 +20,7 @@ private:
     float pose_theta_curr;
 };
 
+//full laser scan
 class maebot_laser_data{
 public:
     maebot_laser_data();
@@ -42,6 +45,53 @@ private:
     maebot_pose_data curr_pose;
     std::vector<eecs467::Point<float>> end_points;
 };
+
+//single laser
+class maebot_laser{
+public:    
+    maebot_laser(){
+        utime = 0;
+        range = 0;
+        theta = 0;
+        intensity = 0;
+        x_pos = 0;
+        y_pos = 0; 
+    }
+    maebot_laser(int64_t time, float r,float th,float inten,float x,float y){
+        utime = time;
+        range = r;
+        theta = th;
+        intensity = inten;
+        x_pos = x;
+        y_pos = y; 
+    }
+    int64_t get_timestamp(){
+        return utime;
+    }
+    float get_range(){
+        return range;
+    }
+    float get_theta(){
+        return theta;
+    }
+    float get_intensity(){
+        return intensity;
+    }
+    float get_x_pos(){
+        return x_pos;
+    }
+    float get_y_pos(){
+        return y_pos;
+    }
+private:
+    int64_t utime;
+    float range;
+    float theta;
+    float intensity;
+    float x_pos;
+    float y_pos;
+};
+
 
 class laser_array{
 public:
@@ -84,4 +134,4 @@ private:
     std::deque<float> thetas;
     std::deque<float> ranges;
 };
-
+#endif
