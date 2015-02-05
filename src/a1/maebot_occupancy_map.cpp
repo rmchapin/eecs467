@@ -38,6 +38,7 @@
 #include "occupancy_map.hpp"
 #include "laser_matcher.hpp"
 
+
 class state_t
 {
     public:
@@ -117,6 +118,7 @@ class state_t
         void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg){
             pthread_mutex_lock(&data_mutex);
             matcher.push_laser(msg);
+            //printf("%d\n",msg->num_ranges);
             pthread_mutex_unlock(&data_mutex);
         }
 
@@ -125,12 +127,9 @@ class state_t
             while(1){
                 usleep(1000);
                 pthread_mutex_lock(&state->data_mutex);
-                state->matcher.process();
-                //std::deque<maebot_laser> lasers;
-                if(!state->matcher.get_processed_laser(state->curr_lasers)){
-                    pthread_mutex_unlock(&state->data_mutex);
-                    continue;
-                }
+                state->matcher.process(); 
+                state->curr_lasers = state->matcher.get_processed_laser();
+                //printf("%d\n",lasers.size());
                 state->map.update(state->curr_lasers);
                 pthread_mutex_unlock(&state->data_mutex);
             }
@@ -140,9 +139,9 @@ class state_t
             //pthread_mutex_lock(&(state->run_mutex));
             state_t* state = (state_t*) input;
             while(1){
-                //pthread_mutex_unlock(&(state->run_mutex));
+                //pthread_mutex_lock(&(state->data_mutex));
                 state->lcm.handle();
-                //pthread_mutex_lock(&(state->run_mutex));
+                //pthread_mutex_unlock(&(state->data_mutex));
             }
             //pthread_mutex_unlock(&(state->run_mutex));
             return NULL;
@@ -166,7 +165,7 @@ class state_t
             {
                 for (size_t x = 0; x < grid.widthInCells(); x++)
                 {
-                    state->image_buf->buf[(y * state->image_buf->stride) + x] = to_grayscale(grid.logOdds(x,y));
+                    state->image_buf->buf[(y * state->image_buf->stride) + x] = to_grayscale(grid.logOdds(y,x));
                 }
             }
         }
@@ -176,31 +175,41 @@ class state_t
             state_t * state = (state_t*) data;
 
             while (1) {
+                pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->world,"pose_data");
                 render_grid(state);
-                vx_object_t *vo = vxo_image_from_u8(state->image_buf,0,0);
+                eecs467::OccupancyGrid& grid = state->map.get_grid();
+                eecs467::Point<float> origin = grid.originInGlobalFrame();
+                vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
+                        vxo_mat_scale((double)grid.metersPerCell()*15),
+                        vxo_image_from_u8(state->image_buf,0,0));
                 vx_buffer_add_back(buf,vo);
-                /*if(state->pose_data.size() > 1){
-                    for(int i = 1; i < state->pose_data.size();++i){
-                        float pts[] = {state->pose_data[i].get_x_pos()*15,state->pose_data[i].get_y_pos()*15,0.0,
-                            state->pose_data[i-1].get_x_pos()*15,state->pose_data[i-1].get_y_pos()*15,0.0};
+
+                if(state->path.size() > 1){
+                    for(int i = 1; i < state->path.size();++i){
+                        float pts[] = {state->path[i].x*15,state->path[i].y*15,0.0,
+                            state->path[i-1].x*15,state->path[i-1].y*15,0.0};
                         //float pts[] = {0*15,0*15,0,15,15,0};
                         vx_resc_t *verts = vx_resc_copyf(pts,6);
                         vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
                     }
-                    std::vector<eecs467::Point<float>> end = state->lasers.get_end_points();
-                    maebot_pose_data p = state->lasers.get_curr_pose();
-                    for(int i=0;i<state->lasers.get_num_ranges();i+=10){
-                        float pts[] = {p.get_x_pos()*15,p.get_y_pos()*15,0.0,
-                            end[i].x*15,end[i].y*15,0.0};
+                    for(int i=0;i<state->curr_lasers.size();i+=5){
+                        float pts[] = {state->curr_lasers[i].get_x_pos()*15,state->curr_lasers[i].get_y_pos()*15,0.0,
+                            state->curr_lasers[i].get_x_end_pos()*15,state->curr_lasers[i].get_y_end_pos()*15,0.0};
                         vx_resc_t *verts = vx_resc_copyf(pts,6);
                         vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,1.0f)));
                     }
+                    char buffer[50];
+                    sprintf(buffer,"<<center, #000000>> (%.2f,%.2f,%.2f)\n",state->path.back().x,state->path.back().y,state->path.back().theta);
+                    vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
+                    vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_LEFT, vxo_chain(vxo_mat_translate2(70,8),vxo_mat_scale(0.8),data_size)));
                 }
+                /*char buffer[50];
+                  sprintf(buffer,"<<center, #000000>> laser_size: %d \n",state->curr_lasers.size());
+                  vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
+                  vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_CENTER, vxo_chain(vxo_mat_translate2(0, 0), vxo_mat_scale(0.6), data_size)));*/
 
-                render_grid(state);
-                //vx_resc_t *vr = resc_copyui(state->image_buf,state->image_buf->stride*state->image_buf->height);
-                                */
+                pthread_mutex_unlock(&state->data_mutex);
                 vx_buffer_swap(buf);
                 usleep(5000);
 
@@ -245,17 +254,11 @@ int main(int argc, char ** argv)
 {
     // Call this to initialize the vx-wide lock. Required to start the GL thread or to use the program library
 
-    vx_global_init(); 
-    //pthread_t lcm_thread_pid;
-    //pthread_create(&lcm_thread_pid,NULL,run_lcm,state);
-    //pthread_t compute_thread_pid;
-    //pthread_create(&compute_thread_pid,NULL,compute_thread,state);
-
-    //pthread_t draw_thread_pid;
-    //pthread_create(&draw_thread_pid, NULL, draw_thread, NULL);
-    //draw(state,state->world);
-    //pthread_create(&state->animate_thread,NULL,render_loop,state);
     state.init_thread();
+    //while(1){
+    //    state.lcm.handle();
+    //}
+    //vx_global_init(); 
     gdk_threads_init();
     gdk_threads_enter();
     gtk_init(&argc, &argv);
@@ -273,5 +276,6 @@ int main(int argc, char ** argv)
     vx_gtk_display_source_destroy(state.appwrap);
     pthread_join(state.animate_thread,NULL);
 
+    //while(1){}
     vx_global_destroy();
 }

@@ -55,7 +55,7 @@ public:
         theta = 0;
         intensity = 0;
         x_pos = 0;
-        y_pos = 0; 
+        y_pos = 0;
     }
     maebot_laser(int64_t time, float r,float th,float inten,float x,float y){
         utime = time;
@@ -83,6 +83,12 @@ public:
     float get_y_pos(){
         return y_pos;
     }
+    float get_x_end_pos(){
+        return x_pos+cosf(theta)*range; 
+    }
+    float get_y_end_pos(){
+        return y_pos+sinf(theta)*range;
+    }
 private:
     int64_t utime;
     float range;
@@ -92,6 +98,19 @@ private:
     float y_pos;
 };
 
+/*class maebot_matched_laser_data{
+public:    
+    maebot_matched_laser_data(){}
+    void push_data(float range,float theta){
+        range.push_back(range);
+        theta.push_back(theta);
+    }
+
+
+private:
+    std::deque<float> range;
+    std::deque<float> theta;
+};*/
 
 class laser_array{
 public:

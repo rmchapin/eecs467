@@ -8,45 +8,53 @@ occupancy_map::occupancy_map(float wInMeters, float hInMeters, float mPerCell, f
     sampling_rate = s_rate;
 }
 
-void occupancy_map::update(std::deque<maebot_laser> &lasers){
-    eecs467::Point<float> global_pos;
+void occupancy_map::update(std::deque<maebot_laser> lasers){
+    //printf("update map: %d\n",lasers.size());
+    float SAMPLE_SPACING = sampling_rate * grid.metersPerCell();
     for(int i=0;i<lasers.size();++i){
         maebot_laser l = lasers[i];
-        global_pos.x = l.get_x_pos();
-        global_pos.y = l.get_y_pos();
-        float dx = sampling_rate * grid.metersPerCell() * cosf(l.get_theta());
-        float dy = sampling_rate * grid.metersPerCell() * sinf(l.get_theta());
-        int times = l.get_range() / (sampling_rate*grid.metersPerCell());
-        eecs467::Point<int> cell_pos;
-        for(int i = 0;i<times;++i){
-            cell_pos = global_position_to_grid_cell(global_pos,grid);
-            if(!grid.isCellInGrid(cell_pos.y,cell_pos.x)){
-                break;
-            }
-
-            if(grid(cell_pos.y,cell_pos.x) < (-128+2)){
-                grid(cell_pos.y,cell_pos.x) = -128;
-            }
-            else{
-                grid(cell_pos.y,cell_pos.x) -= 2;
-            }
-            global_pos.x += dx;
-            global_pos.y += dy;
-        }
-        //get bound
-        global_pos.x = l.get_x_pos() + l.get_range()*cosf(l.get_theta());
-        global_pos.y = l.get_y_pos() + l.get_range()*sinf(l.get_theta());
-        cell_pos = global_position_to_grid_cell(global_pos,grid);
-        if(!grid.isCellInGrid(cell_pos.y,cell_pos.x)){
+        //printf("%f %f\n",l.get_range(),l.get_theta());
+        if(l.get_intensity() == 0){
             continue;
         }
-        if(grid(cell_pos.y,cell_pos.x) > (127-1)){
-            grid(cell_pos.y,cell_pos.x) = 127;
-        }
-        else{
-            grid(cell_pos.y,cell_pos.x) += 1;
-        }
+        float theta = l.get_theta();
+        float sample_x = l.get_x_pos();
+        float sample_y = l.get_y_pos();
+        float dx = SAMPLE_SPACING * cosf(theta);
+        float dy = SAMPLE_SPACING * sinf(theta);
+        eecs467::Point<int> sample_cell;        
+        for(float sample_m = 0; sample_m < l.get_range(); sample_m += SAMPLE_SPACING){
+            sample_cell = global_position_to_grid_cell(eecs467::Point<float>(sample_x,sample_y),grid);
+            if(grid.isCellInGrid(sample_cell.y,sample_cell.x)){
+                int8_t odds = grid.logOdds(sample_cell.y,sample_cell.x); 
+                if(odds < (-128+2)){
+                    grid.setLogOdds(sample_cell.y,sample_cell.x,-128);
+                }
+                else{
+                    odds -= 2;
+                    grid.setLogOdds(sample_cell.y,sample_cell.x,odds);
+                }
+            } 
+            sample_x += dx;
+            sample_y += dy;
+        }       
+        //get bound
+        sample_x = l.get_x_pos() + l.get_range()*cosf(theta);
+        sample_y = l.get_y_pos() + l.get_range()*sinf(theta);
+        sample_cell = global_position_to_grid_cell(eecs467::Point<float>(sample_x,sample_y),grid);
+        if(grid.isCellInGrid(sample_cell.y,sample_cell.x)){
+            int8_t odds = grid.logOdds(sample_cell.y,sample_cell.x); 
+            if(odds > (127-2)){
+                grid.setLogOdds(sample_cell.y,sample_cell.x,127);
+            }
+            else{
+                odds += 2;
+                grid.setLogOdds(sample_cell.y,sample_cell.x,odds);
+            }
+        } 
+
     }
+
 }
 
 eecs467::OccupancyGrid& occupancy_map::get_grid(){

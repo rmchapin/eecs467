@@ -2,7 +2,7 @@
 #define LASER_MATCHER_HPP
 
 #include <deque>
-
+#include <vector>
 #include "maebot_data.hpp"
 #include <lcmtypes/maebot_laser_scan_t.hpp>
 #include <lcmtypes/maebot_pose_t.hpp>
@@ -14,7 +14,7 @@ public:
     bool push_laser(const maebot_laser_scan_t* msg);
     bool push_pose(const maebot_pose_t* msg);
     void process();
-    bool get_processed_laser(std::deque<maebot_laser> &lasers);    
+    std::deque<maebot_laser> get_processed_laser();    
 private:
     std::deque<maebot_laser> to_process_laser;
     std::deque<maebot_laser> processed_laser;
