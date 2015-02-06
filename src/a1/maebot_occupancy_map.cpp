@@ -124,10 +124,14 @@ class state_t
             //}
             //printf("%d\n",msg->num_ranges);
             matcher.process(); 
-            //state->curr_lasers = state->matcher.get_processed_laser();
-            if(!(matcher.get_processed_laser(curr_lasers))){
+            curr_lasers = matcher.get_processed_laser();
+            /*if(!(matcher.get_processed_laser(curr_lasers))){
                 pthread_mutex_unlock(&data_mutex);
                 return;
+            }*/
+            if(curr_lasers.empty()){
+                pthread_mutex_unlock(&data_mutex);
+                return;        
             }
             //printf("%d\n",state->curr_lasers.size());
             map.update(curr_lasers);
