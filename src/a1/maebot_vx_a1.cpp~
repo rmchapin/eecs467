@@ -148,7 +148,7 @@ void update_grid(maebot_pose_data pose, float laser_th, float range, eecs467::Oc
 	double mae_y = pose.get_y_pos();
 	double mae_th = pose.get_theta();
 
-//eecs467::Point<int> riley = global_position_to_grid_cell(eecs467::Point<double>(mae_x, mae_y), grid);
+eecs467::Point<int> riley = global_position_to_grid_cell(eecs467::Point<double>(mae_x, mae_y), grid);
 //grid.setLogOdds(riley.x, riley.y, 120);
 
 	double cos_th = cos(mae_th + laser_th);
