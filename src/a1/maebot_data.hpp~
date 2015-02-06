@@ -36,6 +36,6 @@ private:
     float delta_x;
     float delta_y;
     float delta_theta;
-};
+}
 
 #endif
