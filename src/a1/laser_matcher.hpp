@@ -15,6 +15,7 @@ public:
     bool push_pose(const maebot_pose_t* msg);
     void process();
     std::deque<maebot_laser> get_processed_laser();    
+    bool get_processed_laser(std::deque<maebot_laser> &lasers);
 private:
     std::deque<maebot_laser> to_process_laser;
     std::deque<maebot_laser> processed_laser;

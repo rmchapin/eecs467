@@ -65,6 +65,15 @@ void laser_matcher::process(){
     }
 }
 
+bool laser_matcher::get_processed_laser(std::deque<maebot_laser> &laser){
+    if(processed_laser.empty()){
+        return false;
+    }
+    laser = processed_laser;
+    processed_laser.clear();
+    return true;
+}
+
 std::deque<maebot_laser> laser_matcher::get_processed_laser(){
     std::deque<maebot_laser> lasers = processed_laser;
     //printf("not empty with size %d %d\n",processed_laser.size(),lasers.size());

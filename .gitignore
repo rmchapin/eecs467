@@ -28,4 +28,10 @@
 *.x86_64
 *.hex
 
+# vim swp
+*.swp
+
+# ground_truth
+*.jlp
+
 bin

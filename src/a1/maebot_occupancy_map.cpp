@@ -104,7 +104,7 @@ class state_t
         void init_thread(){
             pthread_create(&lcm_thread_pid,NULL,&state_t::run_lcm,this);
             pthread_create(&animate_thread,NULL,&state_t::render_loop,this);
-            pthread_create(&compute_thread_pid,NULL,&state_t::compute_thread,this);
+            //pthread_create(&compute_thread_pid,NULL,&state_t::compute_thread,this);
         }
 
 
@@ -118,7 +118,19 @@ class state_t
         void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg){
             pthread_mutex_lock(&data_mutex);
             matcher.push_laser(msg);
+            //for(int i=0;i<msg->num_ranges;++i){
+            //    maebot_laser l = maebot_laser(msg->times[i],msg->ranges[i],msg->thetas[i],msg->intensities[i],0,0);
+            //    curr_lasers.push_back(l);
+            //}
             //printf("%d\n",msg->num_ranges);
+            matcher.process(); 
+            //state->curr_lasers = state->matcher.get_processed_laser();
+            if(!(matcher.get_processed_laser(curr_lasers))){
+                pthread_mutex_unlock(&data_mutex);
+                return;
+            }
+            //printf("%d\n",state->curr_lasers.size());
+            map.update(curr_lasers);
             pthread_mutex_unlock(&data_mutex);
         }
 
@@ -128,8 +140,12 @@ class state_t
                 usleep(1000);
                 pthread_mutex_lock(&state->data_mutex);
                 state->matcher.process(); 
-                state->curr_lasers = state->matcher.get_processed_laser();
-                //printf("%d\n",lasers.size());
+                //state->curr_lasers = state->matcher.get_processed_laser();
+                if(!(state->matcher.get_processed_laser(state->curr_lasers))){
+                    pthread_mutex_unlock(&state->data_mutex);
+                    continue;
+                }
+                //printf("%d\n",state->curr_lasers.size());
                 state->map.update(state->curr_lasers);
                 pthread_mutex_unlock(&state->data_mutex);
             }
@@ -204,10 +220,10 @@ class state_t
                     vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
                     vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_LEFT, vxo_chain(vxo_mat_translate2(70,8),vxo_mat_scale(0.8),data_size)));
                 }
-                /*char buffer[50];
-                  sprintf(buffer,"<<center, #000000>> laser_size: %d \n",state->curr_lasers.size());
-                  vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
-                  vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_CENTER, vxo_chain(vxo_mat_translate2(0, 0), vxo_mat_scale(0.6), data_size)));*/
+                char buffer[50];
+                sprintf(buffer,"<<center, #000000>> laser_size: %d \n",state->curr_lasers.size());
+                vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
+                vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_RIGHT, vxo_chain(vxo_mat_translate2(-70, 8), vxo_mat_scale(0.8), data_size)));
 
                 pthread_mutex_unlock(&state->data_mutex);
                 vx_buffer_swap(buf);
