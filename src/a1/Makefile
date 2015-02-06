@@ -33,10 +33,9 @@ LIB_A1_OBJ = maebot_data.o laser_matcher.o occupancy_map.o
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 BIN_LCM_HANDLE_TEST = $(BIN_PATH)/lcm_handle_test
-BIN_MAEBOT_VX_A1 = $(BIN_PATH)/maebot_vx_a1
 BIN_MAEBOT_OCCUPANCY_MAP = $(BIN_PATH)/maebot_occupancy_map
 
-ALL = $(LIB_A1) $(BIN_LCM_HANDLE_TEST) $(BIN_MAEBOT_VX_A1) $(BIN_MAEBOT_OCCUPANCY_MAP)
+ALL = $(LIB_A1) $(BIN_LCM_HANDLE_TEST) $(BIN_MAEBOT_OCCUPANCY_MAP)
 
 all: $(ALL)
 
@@ -45,10 +44,6 @@ $(LIB_A1): $(LIB_A1_OBJ) $(LIBDEPS)
 	@ar rc $@ $^
 
 $(BIN_LCM_HANDLE_TEST): lcm_handle_test.o $(LIBDEPS)
-	@echo "\t$@"
-	@$(CXX) -o $@ $^ $(LDFLAGS)
-
-$(BIN_MAEBOT_VX_A1): maebot_vx_a1.o $(LIBDEPS) $(LIB_A1) $(LIB_MAPPING)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
