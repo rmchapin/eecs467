@@ -1,5 +1,4 @@
 #include "occupancy_map.hpp"
-#include "math/point.hpp"
 #include <math.h>
 #include <math/point.hpp>
 

@@ -66,7 +66,7 @@ class state_t
     public:
         state_t(){
             layers = zhash_create(sizeof(vx_display_t*),sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);
-            map = occupancy_map(5.0,5.0,0.05,1.0);
+            map = occupancy_map(5.0,5.0,0.05,1.0); //if s_rate changes here, correction in samples class needs adjustment
             running = 1;
             app.impl= this;
             app.display_started = display_started;
