@@ -190,6 +190,20 @@ class state_t
             }
         }
 
+        static void save_map(state_t *state){
+            FILE *fp;
+            fp = fopen("occupancy_map.txt","w");
+            eecs467::OccupancyGrid& grid = state->map.get_grid();
+            fprintf(fp,"%d\n",grid.heightInCells());
+            fprintf(fp,"%d\n",grid.widthInCells());
+            for(size_t y = 0; y < grid.heightInCells();y++){
+                for(size_t x = 0; x < grid.widthInCells(); x++){
+                    fprintf(fp,"%d\n",grid.logOdds(y,x));
+                }
+            }
+            fclose(fp);
+        }
+
         static void* render_loop(void* data) {
 
             state_t * state = (state_t*) data;
