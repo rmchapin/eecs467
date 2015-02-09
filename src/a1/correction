@@ -8,25 +8,25 @@ void sample_array::calc_weights(OccupancyGrid grid, laser_scan_t lasers)
     double max_weight = 0.0;
 
     for (int n = 0; n < this.num_samples; n++)
-    {
-        maebot_pose_t pose = this.poses[n];
-        int num_rays = lasers.num_ranges();
-        
+    {        
         double calc_weight = 0.0;            
+        int num_rays = lasers.num_ranges();
 
         for (int r = 0; r < num_rays; r++)
         {
+            //RMC - maybe remove this?
             if (lasers[r].get_intensity() == 0) {continue;}
 
             float theta = lasers[r].get_theta();
             float range = lasers[r].get_range();
-            float mae_x = pose.get_x_pos();
-            float mae_y = pose.get_y_pos();
+            float mae_x = this.poses[n].get_x_pos();
+            float mae_y = this.poses[n].get_y_pos();
             
             float cos = cosf(theta);
             float sin = sinf(theta);
 
-            for (float sample_m = 0.0; sample_m < range; sample_m += 0.05) //sample along laser path
+            //sample along laser path
+            for (float sample_m = 0.0; sample_m < (range - 0.5); sample_m += 0.05)
             {
                 float dx = sample_m * cos;
                 float dy = sample_m * sin;
@@ -35,9 +35,9 @@ void sample_array::calc_weights(OccupancyGrid grid, laser_scan_t lasers)
                 
                 if (grid.isCellInGrid(sample_cell.y, sample_cell.x))
                 {
-                    if (grid.logOdds(sample_cell.y, sample_cell.x) > 0) //laser longer than expected
+                    if (grid.logOdds(sample_cell.y, sample_cell.x) > 0) //laser longer than expected (expected termination in this cell)
                     {
-                        calc_weight -= 12;
+                        calc_weight -= 12.0; //BAD
                         break;
                     }
                 } 
@@ -50,29 +50,33 @@ void sample_array::calc_weights(OccupancyGrid grid, laser_scan_t lasers)
             {
                 if (grid.logOdds(sample_cell.y, sample_cell.x) > 0) //laser is expected dist
                 {
-                    calc_weight -= 4;
+                    calc_weight -= 4.0; //GOOD
                 }
                 else //laser shorter than expected
                 {
-                    calc_weight -= 8;
+                    calc_weight -= 8.0; //OK
                 }
             }
      
         }
         
-        if (calc_weight < max_weight)
-        {
-            max_weight = calc_weight;
-        }
-        
         this.weights[n] = calc_weight;
+        max_weight = std::max(calc_weight, max_weight);
     }
     
-    //normalize
+    //shift by max, exponentiate, sum all weights
+    double sum = 0.0;
     for (int s = 0; s < this.num_samples; s++)
     {
         this.weights[s] += max;
-        //exponentiate...
+        this.weights[s] = pow(10.0, this.weights[s]);
+        sum += this.weights[s];
+    }
+
+    //normalize into [0,1]
+    for (int s = 0; s < this.num_samples; s++)
+    {
+        this.weights[s] /= sum;
     }
 }
 
