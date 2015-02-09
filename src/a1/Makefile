@@ -28,7 +28,7 @@ LIB_MAPPING = $(LIB_PATH)/libmapping.a
 
 
 LIB_A1 = $(LIB_PATH)/liba1.a
-LIB_A1_OBJ = maebot_data.o laser_matcher.o occupancy_map.o maebot_localization_util.o action_model.o odometry_matcher.o
+LIB_A1_OBJ = maebot_data.o laser_matcher.o occupancy_map.o action_model.o odometry_matcher.o particle_data.o
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 

@@ -1,0 +1,32 @@
+#ifndef PARTICLE_DATA_HPP
+#define PARTICLE_DATA_HPP
+#include <deque>
+#include <math/point.hpp>
+#include <math/gsl_util_rand.h>
+#include <lcmtypes/maebot_pose_t.hpp>
+#include <lcmtypes/maebot_laser_scan_t.hpp>
+#include <mapping/occupancy_grid.hpp>
+
+class particle_data{
+public:
+    particle_data();
+    particle_data(int numb, maebot_pose_t starting_loc, float std);
+    particle_data(const particle_data& other);
+    
+    maebot_pose_t get_pose(int index);
+    float get_weight(int index);
+    int get_size();
+
+    void translate(float dx, float dy, float dt);
+    void calc_weight(eecs467::OccupancyGrid grid, maebot_laser_scan_t lasers);
+    maebot_pose_t get_best();
+
+    ~particle_data(){};
+
+private:
+    int number;
+    std::deque<maebot_pose_t> pose;
+    std::deque<float> weight;
+};
+
+#endif
