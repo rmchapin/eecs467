@@ -1,110 +1,79 @@
 #include "maebot_data.hpp"
 #include <math.h>
-maebot_pose_data::maebot_pose_data(){
-    pose_time = 0;
-    pose_x_curr = 0.0;
-    pose_y_curr = 0.0;
-    pose_theta_curr = 0.0;
+
+maebot_laser::maebot_laser(){
+    utime = 0;
+    range = 0;
+    theta = 0;
+    intensity = 0;
+    x_pos = 0;
+    y_pos = 0;
 }
 
-maebot_pose_data::maebot_pose_data(const maebot_pose_data& other):
-    pose_time(other.pose_time),pose_x_curr(other.pose_x_curr),
-    pose_y_curr(other.pose_y_curr),pose_theta_curr(other.pose_theta_curr){}
-
-
-maebot_pose_data::maebot_pose_data(int64_t utime,float x,float y, float theta){
-    pose_time = utime;
-    pose_x_curr = x;
-    pose_y_curr = y;
-    pose_theta_curr = theta;
+maebot_laser::maebot_laser(int64_t time, float r,float th,float inten,float x,float y){
+    utime = time;
+    range = r;
+    theta = th;
+    intensity = inten;
+    x_pos = x;
+    y_pos = y; 
 }
 
-int64_t maebot_pose_data::get_timestamp(){
-    return pose_time;
+int64_t maebot_laser::get_timestamp(){
+    return utime;
 }
 
-float maebot_pose_data::get_x_pos(){
-    return pose_x_curr;
+float maebot_laser::get_range(){
+    return range;
 }
 
-float maebot_pose_data::get_y_pos(){
-    return pose_y_curr;
+float maebot_laser::get_theta(){
+    return theta;
 }
 
-float maebot_pose_data::get_theta(){
-    return pose_theta_curr;
+float maebot_laser::get_intensity(){
+    return intensity;
 }
 
-maebot_laser_data::maebot_laser_data(){ 
-
+float maebot_laser::get_x_pos(){
+    return x_pos;
 }
 
-maebot_laser_data::maebot_laser_data(int64_t utime,int32_t nranges,std::vector<float> rs,
-        std::vector<float> ths,std::vector<int64_t> ts,
-        std::vector<float> is){
-    laser_time = utime;
-    num_ranges = nranges;
-    ranges = rs;
-    thetas = ths;
-    times = ts;
-    intensities = is;
+float maebot_laser::get_y_pos(){
+    return y_pos;
 }
 
-
-maebot_laser_data::maebot_laser_data(int64_t utime,int32_t nranges,std::vector<float> rs,
-        std::vector<float> ths,std::vector<int64_t> ts,
-        std::vector<float> is, maebot_pose_data pose){
-    laser_time = utime;
-    num_ranges = nranges;
-    ranges = rs;
-    thetas = ths;
-    times = ts;
-    intensities = is;
-    curr_pose = pose;
-    calc_end_points();
+float maebot_laser::get_x_end_pos(){
+    return x_pos+cosf(theta)*range; 
 }
 
-void maebot_laser_data::calc_end_points(){
-    for(int i = 0; i < num_ranges;++i){
-        float x = curr_pose.get_x_pos()+cosf(thetas[i]-curr_pose.get_theta())*ranges[i];
-        float y = curr_pose.get_y_pos()+sinf(thetas[i]-curr_pose.get_theta())*ranges[i];
-        end_points.push_back(eecs467::Point<float>(x,y));
-    } 
+float maebot_laser::get_y_end_pos(){
+    return y_pos+sinf(theta)*range;
 }
 
-int64_t maebot_laser_data::get_timestamp(){
-    return laser_time;
+maebot_pose_delta::maebot_pose_delta(){
+    delta_x = 0;
+    delta_y = 0;
+    delta_theta = 0;
 }
 
-int32_t maebot_laser_data::get_num_ranges(){
-    return num_ranges;
+maebot_pose_delta::maebot_pose_delta(float dx,float dy, float dt){
+    delta_x = dx;
+    delta_y = dy;
+    delta_theta = dt;
 }
 
-std::vector<float> maebot_laser_data::get_ranges(){
-    return ranges;
+float maebot_pose_delta::get_delta_x(){
+    return delta_x;
 }
 
-std::vector<float> maebot_laser_data::get_thetas(){
-    return thetas;
+float maebot_pose_delta::get_delta_y(){
+    return delta_y;
 }
 
-std::vector<int64_t> maebot_laser_data::get_times(){
-    return times;
+float maebot_pose_delta::get_delta_theta(){
+    return delta_theta;
 }
-
-std::vector<float> maebot_laser_data::get_intensities(){
-    return intensities;
-}
-
-maebot_pose_data maebot_laser_data::get_curr_pose(){
-    return curr_pose;
-}
-
-std::vector<eecs467::Point<float>> maebot_laser_data::get_end_points(){
-    return end_points;
-}
-
-
 
 
 
