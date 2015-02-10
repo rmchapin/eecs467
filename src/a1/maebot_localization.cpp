@@ -158,7 +158,14 @@ class state_t
             matcher.push_laser(msg);
             //match lasers with the pose data calculated from odometry
             matcher.process();
-
+            //now one scan of the laser has the interpolated position
+            curr_lasers = matcher.get_processed_laser();
+            //add this to make it run smooth
+            if(curr_lasers.empty()){
+                pthread_mutex_unlock(&data_mutex);
+                return;
+            }
+            //start calc deltas here and do the translation
             particles.translate(0.5, 0.5, 3.14/2.0);
             //correct
             //find best
