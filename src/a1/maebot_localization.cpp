@@ -23,11 +23,12 @@
 #include "common/timestamp.h"
 #include "imagesource/image_u32.h"
 #include "imagesource/image_util.h"
-#include "lcmtypes/maebot_motor_feedback_t.h"
-#include "lcmtypes/maebot_sensor_data_t.h"
+#include "lcmtypes/maebot_motor_feedback_t.hpp"
+#include "lcmtypes/maebot_sensor_data_t.hpp"
 #include "lcm_handlers.hpp"
 #include "particle_data.hpp"
-//#include "maebot_data.hpp"
+#include "action_model.hpp"
+#include "maebot_data.hpp"
 //#define BASE_LENGTH 0.08 // meters
 //#define METERS_PER_TICK 0.00020944 // meters
 //#define ADC_PER_METER_PER_SECOND_PER_SECOND 1670.13251784
@@ -51,7 +52,11 @@ class state_t
 
         pthread_mutex_t data_mutex;
         pthread_mutex_t run_mutex;
-        std::deque<maebot_pose_t> path;
+        //save for the path from odometry and action model
+        std::deque<maebot_pose_t> odo_path;
+        maebot_motor_feedback_t prev;
+        maebot_motor_feedback_t next;
+        action_model action_error_model;
         std::deque<maebot_laser> curr_lasers;
         laser_matcher matcher;
         particle_data particles;
@@ -83,7 +88,9 @@ class state_t
             particles = particle_data(1000,temp);
 
             read_map();
-
+            action_error_model = action_model();
+            odo_path.push_back(temp);
+            matcher.push_pose(&temp); 
             if (pthread_mutex_init(&run_mutex, NULL)) {
                 printf("run mutex init failed\n");
                 exit(1);
@@ -121,12 +128,37 @@ class state_t
         void odo_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_motor_feedback_t *msg){
             pthread_mutex_lock(&data_mutex);
             //store into odo matcher
+            if(prev.utime != -1 && next.utime != -1){
+                prev = next;
+                next = *msg;
+                //calc new pose
+                action_error_model.init_model(prev,next);
+                maebot_pose_t new_pose = action_error_model.get_new_pose(odo_path.back());
+                odo_path.push_back(new_pose);
+                matcher.push_pose(&new_pose);
+            }
+            else if(prev.utime != -1){
+                next = *msg;
+                //calc new pose
+                action_error_model.init_model(prev,next);
+                maebot_pose_t new_pose = action_error_model.get_new_pose(odo_path.back());
+                odo_path.push_back(new_pose);
+                matcher.push_pose(&new_pose);
+            }
+            else{
+                prev = *msg;
+            }
             pthread_mutex_unlock(&data_mutex);
         }
 
         void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg){
             pthread_mutex_lock(&data_mutex);
             //calc deltas
+            //push lasers to the matcher
+            matcher.push_laser(msg);
+            //match lasers with the pose data calculated from odometry
+            matcher.process();
+
             particles.translate(0.5, 0.5, 3.14/2.0);
             //correct
             //find best

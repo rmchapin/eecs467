@@ -9,7 +9,7 @@ action_model::action_model():
 
 action_model::action_model(float e1, float e2):
     rand_gen(std::chrono::system_clock::now().time_since_epoch().count()),
-    nor_dist(0,1),k1(k1),k2(e2){}
+    nor_dist(0,1),k1(e1),k2(e2){}
 
 // in the localization main file, we will use the odometry_matcher to return the
 // prev and curr odometry data
