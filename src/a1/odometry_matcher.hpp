@@ -10,7 +10,6 @@ public:
     maebot_motor_feedback_t get_curr_motor_feedback();   
     maebot_motor_feedback_t get_prev_motor_feedback();
 
-private:
     maebot_motor_feedback_t prev;
     maebot_motor_feedback_t curr;
     maebot_motor_feedback_t next;

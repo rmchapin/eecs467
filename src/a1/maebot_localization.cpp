@@ -26,6 +26,7 @@
 #include "lcmtypes/maebot_motor_feedback_t.h"
 #include "lcmtypes/maebot_sensor_data_t.h"
 #include "lcm_handlers.hpp"
+#include "particle_data.hpp"
 //#include "maebot_data.hpp"
 //#define BASE_LENGTH 0.08 // meters
 //#define METERS_PER_TICK 0.00020944 // meters
@@ -37,6 +38,7 @@
 #include <math/point.hpp>
 #include "occupancy_map.hpp"
 #include "laser_matcher.hpp"
+#include <math/gsl_util_rand.h>
 
 
 class state_t
@@ -52,7 +54,7 @@ class state_t
         std::deque<maebot_pose_t> path;
         std::deque<maebot_laser> curr_lasers;
         laser_matcher matcher;
-        pthread_t compute_thread_pid;
+        particle_data particles;
 
         // vx stuff	
         int running;
@@ -63,16 +65,24 @@ class state_t
         pthread_mutex_t mutex; // for accessing the arrays
         pthread_t animate_thread;
         image_u8_t *image_buf;
+
     public:
         state_t(){
             layers = zhash_create(sizeof(vx_display_t*),sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);
-            map = occupancy_map(5.0,5.0,0.05,1.0); //if s_rate changes here, correction in samples class needs adjustment
             running = 1;
             app.impl= this;
             app.display_started = display_started;
             app.display_finished = display_finished;
             world = vx_world_create();
             pthread_mutex_init (&mutex, NULL);
+
+            maebot_pose_t temp;
+            temp.x=0;
+            temp.y=0;
+            temp.theta=0;
+            particles = particle_data(1000,temp);
+
+            read_map();
 
             if (pthread_mutex_init(&run_mutex, NULL)) {
                 printf("run mutex init failed\n");
@@ -83,7 +93,7 @@ class state_t
                 exit(1);
             }
             image_buf = nullptr; 
-            lcm.subscribe("MAEBOT_POSE",&state_t::pose_data_handler,this);
+            //lcm.subscribe("MAEBOT_POSE",&state_t::pose_data_handler,this);
             lcm.subscribe("MAEBOT_LASER_SCAN", &state_t::laser_scan_handler,this);
         }
 
@@ -104,70 +114,43 @@ class state_t
         void init_thread(){
             pthread_create(&lcm_thread_pid,NULL,&state_t::run_lcm,this);
             pthread_create(&animate_thread,NULL,&state_t::render_loop,this);
-            //pthread_create(&compute_thread_pid,NULL,&state_t::compute_thread,this);
         }
 
 
-        void pose_data_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_pose_t *msg){
+
+        void odo_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_motor_feedback_t *msg){
             pthread_mutex_lock(&data_mutex);
-            matcher.push_pose(msg);
-            path.push_back(*msg);
+            //store into odo matcher
             pthread_mutex_unlock(&data_mutex);
         }
 
         void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg){
             pthread_mutex_lock(&data_mutex);
-            matcher.push_laser(msg);
-            //for(int i=0;i<msg->num_ranges;++i){
-            //    maebot_laser l = maebot_laser(msg->times[i],msg->ranges[i],msg->thetas[i],msg->intensities[i],0,0);
-            //    curr_lasers.push_back(l);
-            //}
-            //printf("%d\n",msg->num_ranges);
-            matcher.process(); 
-            curr_lasers = matcher.get_processed_laser();
-            /*if(!(matcher.get_processed_laser(curr_lasers))){
-                pthread_mutex_unlock(&data_mutex);
-                return;
-            }*/
-            if(curr_lasers.empty()){
-                pthread_mutex_unlock(&data_mutex);
-                return;        
-            }
-            //printf("%d\n",state->curr_lasers.size());
-            map.update(curr_lasers);
+            //calc deltas
+            particles.translate(0.5, 0.5, 3.14/2.0);
+            //correct
+            //find best
             pthread_mutex_unlock(&data_mutex);
         }
 
-        static void* compute_thread(void *input){
-            state_t* state = (state_t*) input;
-            while(1){
-                usleep(1000);
-                pthread_mutex_lock(&state->data_mutex);
-                state->matcher.process(); 
-                //state->curr_lasers = state->matcher.get_processed_laser();
-                if(!(state->matcher.get_processed_laser(state->curr_lasers))){
-                    pthread_mutex_unlock(&state->data_mutex);
-                    continue;
-                }
-                //printf("%d\n",state->curr_lasers.size());
-                state->map.update(state->curr_lasers);
-                pthread_mutex_unlock(&state->data_mutex);
-            }
-        }
-
         static void* run_lcm(void *input){
-            //pthread_mutex_lock(&(state->run_mutex));
             state_t* state = (state_t*) input;
             while(1){
-                //pthread_mutex_lock(&(state->data_mutex));
                 state->lcm.handle();
-                //pthread_mutex_unlock(&(state->data_mutex));
             }
-            //pthread_mutex_unlock(&(state->run_mutex));
             return NULL;
         }
-        static void draw(state_t* state, vx_world_t* world){    
 
+        static void draw(state_t* state, vx_world_t* world){    
+            vx_buffer_t *buf = vx_world_get_buffer(state->world,"map");
+            render_grid(state);
+            eecs467::OccupancyGrid& grid = state->map.get_grid();
+            eecs467::Point<float> origin = grid.originInGlobalFrame();
+            vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
+                        vxo_mat_scale((double)grid.metersPerCell()*15),
+                        vxo_image_from_u8(state->image_buf,0,0));
+            vx_buffer_add_back(buf,vo);
+            vx_buffer_swap(buf);
         }
 
         static uint8_t to_grayscale(int8_t logOdds)
@@ -204,6 +187,30 @@ class state_t
             fclose(fp);
         }
 
+        void read_map(){
+            FILE *fp;
+            uint8_t temp;
+            fp = fopen("occupancy_map.txt","r");
+            fscanf(fp,"%d\n",&temp);
+            if(temp != map.grid.heightInCells()){
+                std::cout << "Height not match\n";
+                exit(1);
+            }
+            fscanf(fp,"%d\n",&temp);
+            if(temp != map.grid.widthInCells()){
+                std::cout << "Width not match\n";
+                exit(1);
+            }
+            map = occupancy_map(5.0,5.0,0.05,1.0); //if s_rate changes here, correction in samples class needs adjustment
+            for(size_t y = 0; y < map.grid.heightInCells();y++){
+                for(size_t x = 0; x < map.grid.widthInCells(); x++){
+                    fscanf(fp,"%d ",&temp);
+                    map.grid.setLogOdds(y,x,temp);
+                }
+            }
+            fclose(fp);
+        }
+
         static void* render_loop(void* data) {
 
             state_t * state = (state_t*) data;
@@ -211,15 +218,15 @@ class state_t
             while (1) {
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->world,"pose_data");
-                render_grid(state);
+                /*render_grid(state);
                 eecs467::OccupancyGrid& grid = state->map.get_grid();
                 eecs467::Point<float> origin = grid.originInGlobalFrame();
                 vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
                         vxo_mat_scale((double)grid.metersPerCell()*15),
                         vxo_image_from_u8(state->image_buf,0,0));
-                vx_buffer_add_back(buf,vo);
+                vx_buffer_add_back(buf,vo);*/
 
-                if(state->path.size() > 1){
+                /*if(state->path.size() > 1){
                     for(int i = 1; i < state->path.size();++i){
                         float pts[] = {state->path[i].x*15,state->path[i].y*15,0.0,
                             state->path[i-1].x*15,state->path[i-1].y*15,0.0};
@@ -242,7 +249,13 @@ class state_t
                 sprintf(buffer,"<<center, #000000>> laser_size: %d \n",state->curr_lasers.size());
                 vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
                 vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_RIGHT, vxo_chain(vxo_mat_translate2(-70, 8), vxo_mat_scale(0.8), data_size)));
-
+                */
+                if(state->particles.pose.size() > 1){
+                    float* pts = state->particles.get_particle_coords();
+                    int npoints = state->particles.number;
+                    vx_resc_t *verts = vx_resc_copyf(pts, npoints*3);
+                    vx_buffer_add_back(buf, vxo_points(verts, npoints, vxo_points_style(vx_green, 2.0f)));
+                }
                 pthread_mutex_unlock(&state->data_mutex);
                 vx_buffer_swap(buf);
                 usleep(5000);
@@ -286,13 +299,8 @@ state_t state;
 
 int main(int argc, char ** argv)
 {
-    // Call this to initialize the vx-wide lock. Required to start the GL thread or to use the program library
-
     state.init_thread();
-    //while(1){
-    //    state.lcm.handle();
-    //}
-    //vx_global_init(); 
+    state.draw(&state,state.world);
     gdk_threads_init();
     gdk_threads_enter();
     gtk_init(&argc, &argv);
@@ -310,6 +318,5 @@ int main(int argc, char ** argv)
     vx_gtk_display_source_destroy(state.appwrap);
     pthread_join(state.animate_thread,NULL);
 
-    //while(1){}
     vx_global_destroy();
 }

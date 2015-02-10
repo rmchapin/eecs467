@@ -10,7 +10,7 @@
 class particle_data{
 public:
     particle_data();
-    particle_data(int numb, maebot_pose_t starting_loc, float std);
+    particle_data(int numb, maebot_pose_t starting_loc);
     particle_data(const particle_data& other);
     
     maebot_pose_t get_pose(int index);
@@ -20,12 +20,11 @@ public:
     void translate(float dx, float dy, float dt);
     void calc_weight(eecs467::OccupancyGrid grid, maebot_laser_scan_t lasers);
     maebot_pose_t get_best();
-
+    float* get_particle_coords();
     ~particle_data(){};
-
-private:
-    int number;
     std::deque<maebot_pose_t> pose;
+    int number;
+private:
     std::deque<float> weight;
 };
 

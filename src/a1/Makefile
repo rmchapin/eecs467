@@ -6,13 +6,15 @@ CXXFLAGS = $(CXXFLAGS_STD) \
      $(CFLAGS_MATH) \
      $(CFLAGS_COMMON) \
      $(CFLAGS_LCMTYPES) \
+     $(CFLAGS_GSL) \
      -O2 -w
 LDFLAGS  = $(LDFLAGS_STD) \
 	$(LDFLAGS_VX_GTK) \
 	  $(LDFLAGS_IMAGESOURCE) \
 	  $(LDFLAGS_MATH) \
 	  $(LDFLAGS_COMMON) \
-		$(LDFLAGS_LCMTYPES)
+		$(LDFLAGS_LCMTYPES) \
+		$(LDFLAGS_GSL)
 
 #LIB_MAEBOT_DATA = $(LIB_PATH)/libmaebotdata.a
 #LIB_MAEBOT_DATA_OBJ = maebot_data.o
@@ -33,9 +35,9 @@ LIB_A1_OBJ = maebot_data.o laser_matcher.o occupancy_map.o action_model.o odomet
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 BIN_LCM_HANDLE_TEST = $(BIN_PATH)/lcm_handle_test
-BIN_MAEBOT_OCCUPANCY_MAP = $(BIN_PATH)/maebot_occupancy_map
+BIN_MAEBOT_LOCALIZATION = $(BIN_PATH)/maebot_localization
 
-ALL = $(LIB_A1) $(BIN_LCM_HANDLE_TEST) $(BIN_MAEBOT_OCCUPANCY_MAP)
+ALL = $(LIB_A1) $(BIN_LCM_HANDLE_TEST) $(BIN_MAEBOT_LOCALIZATION)
 
 all: $(ALL)
 
@@ -47,7 +49,7 @@ $(BIN_LCM_HANDLE_TEST): lcm_handle_test.o $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(BIN_MAEBOT_OCCUPANCY_MAP): maebot_occupancy_map.o $(LIBDEPS) $(LIB_A1) $(LIB_MAPPING)
+$(BIN_MAEBOT_LOCALIZATION): maebot_localization.o $(LIBDEPS) $(LIB_A1) $(LIB_MAPPING)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
