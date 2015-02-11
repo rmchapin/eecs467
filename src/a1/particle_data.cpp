@@ -58,7 +58,7 @@ void particle_data::translate(maebot_pose_delta_t deltas){
 	}
 
 }
-void particle_data::calc_weight(eecs467::OccupancyGrid grid, maebot_laser_scan_t lasers)
+void particle_data::calc_weight(eecs467::OccupancyGrid &grid, const maebot_laser_scan_t &lasers)
 {
     double max_weight = 0.0;
 
@@ -74,7 +74,7 @@ void particle_data::calc_weight(eecs467::OccupancyGrid grid, maebot_laser_scan_t
             //RMC - maybe remove this?
             if (lasers.intensities[r] == 0) {continue;}
 
-            std::cout << "ray_" << ccc << " is: ";
+            //std::cout << "ray_" << ccc << " is: ";
 
             float theta = lasers.thetas[r];
             float range = lasers.ranges[r];
@@ -98,7 +98,7 @@ void particle_data::calc_weight(eecs467::OccupancyGrid grid, maebot_laser_scan_t
                 {
                     if (grid.logOdds(sample_cell.y, sample_cell.x) > 0) //laser longer than expected (expected termination in this cell)
                     {
-                        std::cout << "BAD\n";
+                        //std::cout << "BAD\n";
                         calc_weight -= 12.0; //BAD
                         check_term_cell = false;
                         break;
@@ -115,22 +115,22 @@ void particle_data::calc_weight(eecs467::OccupancyGrid grid, maebot_laser_scan_t
                 {
                     if (grid.logOdds(sample_cell.y, sample_cell.x) > 0) //laser is expected dist
                     {
-                        std::cout << "GOOD\n";
+                        //std::cout << "GOOD\n";
                         calc_weight -= 4.0; //GOOD
                     }
                     else //laser shorter than expected
                     {
-                        std::cout << "OK\n";
+                        //std::cout << "OK\n";
                         calc_weight -= 8.0; //OK
                     }
                 }
             }
         
-        std::string garbage = "";
-        std::cin >> garbage;
+        //std::string garbage = "";
+        //std::cin >> garbage;
         }
         
-        std::cout << "weight of this particle: " <<  calc_weight << "\n";
+        //std::cout << "weight of this particle: " <<  calc_weight << "\n";
         this->weight[n] = calc_weight;
         max_weight = std::max(calc_weight, max_weight);
     }

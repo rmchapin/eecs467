@@ -28,7 +28,7 @@
 #include "lcm_handlers.hpp"
 #include "particle_data.hpp"
 #include "action_model.hpp"
-#include "maebot_data.hpp"
+#include "pose_tracker.hpp"
 
 #include "mapping/occupancy_grid.hpp"
 #include "mapping/occupancy_grid_utils.hpp"
@@ -49,9 +49,11 @@ class state_t
         pthread_mutex_t run_mutex;
 
         particle_data particles;
-
         action_model action_error_model;
         pose_tracker bot_tracker;
+
+        std::deque<maebot_pose_t> our_path;
+        std::deque<maebot_pose_t> collins_path;
 
         // vx stuff	
         vx_application_t app;
@@ -96,7 +98,9 @@ class state_t
 
             image_buf = nullptr;
 
-            lcm.subscribe("MAEBOT_LASER_SCAN", &state_t::laser_scan_handler,this);
+            lcm.subscribe("MAEBOT_POSE", &state_t::pose_handler, this);
+            lcm.subscribe("MAEBOT_MOTOR_FEEDBACK", &state_t::odo_handler, this);
+            lcm.subscribe("MAEBOT_LASER_SCAN", &state_t::laser_scan_handler, this);
         }
 
         ~state_t()
@@ -107,7 +111,6 @@ class state_t
             pthread_mutex_destroy(&mutex);
             pthread_mutex_destroy(&run_mutex);
             pthread_mutex_destroy(&data_mutex);
-            lcm_destroy(state->lcm);
             image_u8_destroy(image_buf);
         }
 
@@ -117,11 +120,19 @@ class state_t
             pthread_create(&animate_thread,NULL,&state_t::render_loop,this);
         }
 
+        void pose_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_pose_t *msg){
+            pthread_mutex_lock(&data_mutex);
+
+            collins_path.push_back(*msg);
+
+            pthread_mutex_unlock(&data_mutex);
+        }
+
         void odo_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_motor_feedback_t *msg)
         {
             pthread_mutex_lock(&data_mutex);
 
-            bot_tracker.push_msg(msg, &action_error_model); //RMC - pretty sure this needs to be a reference.. 90%
+                bot_tracker.push_msg(msg, action_error_model);
 
             pthread_mutex_unlock(&data_mutex);
         }
@@ -130,16 +141,24 @@ class state_t
         {
             pthread_mutex_lock(&data_mutex);
 
+            //calc laser avg time
+            int64_t laser_avg_time = (msg->times[0] + msg->times[msg->num_ranges - 1]) / 2;
+
             //stall for new pose
-            while (bot_tracker.recent_pose_time() < msg->utime) {}
+            while (bot_tracker.recent_pose_time() < laser_avg_time) { printf("stalling\n");}
 
             //calc deltas and translate
-            particles.translate(bot_tracker.calc_deltas(msg->utime));
+            particles.translate(bot_tracker.calc_deltas(laser_avg_time));
 
             //localize
-            particles.calc_weight(&grid, msg);
+            particles.calc_weight(map.grid, *msg);
 
             //find best
+            maebot_pose_t best_particle = particles.get_best();
+            our_path.push_back(best_particle);
+
+            //update map using best particle and lasers
+
 
             pthread_mutex_unlock(&data_mutex);
         }
@@ -277,9 +296,27 @@ class state_t
                             state->bot_tracker.poses[i-1].x,state->bot_tracker.poses[i-1].y,0.0};
                         //float pts[] = {0*15,0*15,0,15,15,0};
                         vx_resc_t *verts = vx_resc_copyf(pts,6);
-                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
+                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,2.0f)));
                     }
 
+                }
+                if(state->our_path.size() > 1){
+                    for(int i = 1; i < state->our_path.size();++i){
+                        float pts[] = {state->our_path[i].x,state->our_path[i].y,0.0,
+                            state->our_path[i-1].x,state->our_path[i-1].y,0.0};
+                        //float pts[] = {0*15,0*15,0,15,15,0};
+                        vx_resc_t *verts = vx_resc_copyf(pts,6);
+                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
+                    }
+                }
+                if(state->collins_path.size() > 1){
+                    for(int i = 1; i < state->collins_path.size();++i){
+                        float pts[] = {state->collins_path[i].x,state->collins_path[i].y,0.0,
+                            state->collins_path[i-1].x,state->collins_path[i-1].y,0.0};
+                        //float pts[] = {0*15,0*15,0,15,15,0};
+                        vx_resc_t *verts = vx_resc_copyf(pts,6);
+                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_black,2.0f)));
+                    }
                 }
                 pthread_mutex_unlock(&state->data_mutex);
                 vx_buffer_swap(buf);

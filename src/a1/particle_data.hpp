@@ -20,7 +20,7 @@ public:
     int get_size();
 
     void translate(maebot_pose_delta_t deltas);
-    void calc_weight(eecs467::OccupancyGrid & grid, maebot_laser_scan_t & lasers);
+    void calc_weight(eecs467::OccupancyGrid & grid, const maebot_laser_scan_t & lasers);
     maebot_pose_t get_best();
     float* get_particle_coords();
     ~particle_data(){};

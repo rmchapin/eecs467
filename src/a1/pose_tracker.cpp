@@ -10,17 +10,24 @@ pose_tracker::pose_tracker()
 	poses.push_back(last_calc_pose);
 }
 
-void pose_tracker::push_msg(maebot_motor_feedback_t *msg, action_model & model)
+void pose_tracker::push_msg(const maebot_motor_feedback_t *msg, action_model & model)
 {
-	//push odo
-	maebot_motor_feedback_t prev_odo = odo_msgs.back();
-	odo_msgs.push_back(msg);
+	if (odo_msgs.size() > 0)
+	{
+		//push odo
+		maebot_motor_feedback_t prev_odo = (*odo_msgs.back());
+		odo_msgs.push_back(msg);
 
-	//generate new pose in action model
-	maebot_pose_t temp = model.gen_pose(poses.back(), prev_odo, odo_msgs.back());
+		//generate new pose in action model
+		maebot_pose_t temp = model.gen_pose(poses.back(), prev_odo, (*odo_msgs.back()));
 
-	//push new pose
-	poses.push_back(temp);
+		//push new pose
+		poses.push_back(temp);
+	}
+	else
+	{
+		odo_msgs.push_back(msg);
+	}
 }
 
 maebot_pose_delta_t pose_tracker::calc_deltas(int64_t t)
@@ -31,7 +38,7 @@ maebot_pose_delta_t pose_tracker::calc_deltas(int64_t t)
 
 	//backtrack to relevant poses
 	for( it = poses.end()-1 ; it != poses.begin() ; --it ){
-		if(t > it.utime){
+		if(t > it->utime){
 			no1= *it;
 			no2= *(++it);
 		}
