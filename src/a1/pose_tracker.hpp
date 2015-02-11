@@ -14,12 +14,12 @@ class pose_tracker
 	    std::deque<maebot_pose_t> poses;
 
 	    pose_tracker();
-	    void push_msg(const maebot_motor_feedback_t *msg, action_model & model);
+	    void push_msg(maebot_motor_feedback_t msg, action_model & model);
 	    maebot_pose_delta_t calc_deltas(int64_t t);
 	    int64_t recent_pose_time();
 
 	private:
-	    std::deque<const maebot_motor_feedback_t*> odo_msgs;
+	    std::deque<maebot_motor_feedback_t> odo_msgs;
 	    maebot_pose_t last_calc_pose;
 };
 

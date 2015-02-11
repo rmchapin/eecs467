@@ -10,16 +10,20 @@ pose_tracker::pose_tracker()
 	poses.push_back(last_calc_pose);
 }
 
-void pose_tracker::push_msg(const maebot_motor_feedback_t *msg, action_model & model)
+void pose_tracker::push_msg(maebot_motor_feedback_t msg, action_model & model)
 {
 	if (odo_msgs.size() > 0)
 	{
 		//push odo
-		maebot_motor_feedback_t prev_odo = (*odo_msgs.back());
+        printf("pose_tracker pushing\n");
+        //printf("odo_msgs size:%d\n",odo_msgs.size());
+        printf("poses size: %d\n",poses.size());
+        maebot_motor_feedback_t prev_odo = odo_msgs.back();
+        //printf("%d %d\n",prev_odo.encoder_left_ticks,prev_odo.encoder_right_ticks);
 		odo_msgs.push_back(msg);
-
+        printf("pose_tracker compare time:%d %d\n",prev_odo.utime,msg.utime);
 		//generate new pose in action model
-		maebot_pose_t temp = model.gen_pose(poses.back(), prev_odo, (*odo_msgs.back()));
+		maebot_pose_t temp = model.gen_pose(poses.back(), prev_odo, odo_msgs.back());
 
 		//push new pose
 		poses.push_back(temp);

@@ -131,8 +131,8 @@ class state_t
         void odo_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_motor_feedback_t *msg)
         {
             pthread_mutex_lock(&data_mutex);
-
-                bot_tracker.push_msg(msg, action_error_model);
+            printf("start pushing\n");
+            bot_tracker.push_msg(*msg, action_error_model);
 
             pthread_mutex_unlock(&data_mutex);
         }
@@ -360,8 +360,8 @@ class state_t
 int main(int argc, char ** argv)
 {
     state_t state;
-
     state.init_thread();
+    //comment below disable the vx
     state.draw(&state,state.world);
     gdk_threads_init();
     gdk_threads_enter();
@@ -376,9 +376,11 @@ int main(int argc, char ** argv)
     gtk_widget_show (canvas); // XXX Show all causes errors!
     g_signal_connect_swapped(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
     gtk_main(); // Blocks as long as GTK window is open
+    
     gdk_threads_leave();
     vx_gtk_display_source_destroy(state.appwrap);
+    //comment above disable vx
     pthread_join(state.animate_thread,NULL);
-
+    
     vx_global_destroy();
 }
