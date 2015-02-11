@@ -131,7 +131,7 @@ class state_t
         void odo_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_motor_feedback_t *msg)
         {
             pthread_mutex_lock(&data_mutex);
-            printf("start pushing\n");
+            //printf("start pushing\n");
             bot_tracker.push_msg(*msg, action_error_model);
 
             pthread_mutex_unlock(&data_mutex);
@@ -139,14 +139,22 @@ class state_t
 
         void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg)
         {
-            pthread_mutex_lock(&data_mutex);
+
+
+
 
             //calc laser avg time
+            printf("num ranges:%f", msg->num_ranges );
+            printf("msg time 0: %f, msg last time: %f\n", msg->times[0], msg->times[3]);
             int64_t laser_avg_time = (msg->times[0] + msg->times[msg->num_ranges - 1]) / 2;
 
             //stall for new pose
-            while (bot_tracker.recent_pose_time() < laser_avg_time) { printf("stalling\n");}
-
+            printf("bot_tracker time: %f", bot_tracker.recent_pose_time() );
+            printf("laser avg time: %f", laser_avg_time);
+            while (bot_tracker.recent_pose_time() < laser_avg_time) { 
+                printf("stalling\n");
+            }
+            pthread_mutex_lock(&data_mutex);
             //calc deltas and translate
             particles.translate(bot_tracker.calc_deltas(laser_avg_time));
 

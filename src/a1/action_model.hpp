@@ -17,7 +17,7 @@ public:
 
 private:
     std::mt19937 rand_gen;
-    std::normal_distribution<float> nor_dist;
+    //std::normal_distribution<float> nor_dist;
     float k1;
     float k2;
 };
