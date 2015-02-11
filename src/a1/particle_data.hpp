@@ -7,6 +7,8 @@
 #include <lcmtypes/maebot_laser_scan_t.hpp>
 #include <mapping/occupancy_grid.hpp>
 
+typedef maebot_pose_t maebot_pose_delta_t;
+
 class particle_data{
 public:
     particle_data();
@@ -17,8 +19,8 @@ public:
     float get_weight(int index);
     int get_size();
 
-    void translate(float dx, float dy, float dt);
-    void calc_weight(eecs467::OccupancyGrid grid, maebot_laser_scan_t lasers);
+    void translate(maebot_pose_delta_t deltas);
+    void calc_weight(eecs467::OccupancyGrid & grid, maebot_laser_scan_t & lasers);
     maebot_pose_t get_best();
     float* get_particle_coords();
     ~particle_data(){};

@@ -29,16 +29,11 @@
 #include "particle_data.hpp"
 #include "action_model.hpp"
 #include "maebot_data.hpp"
-//#define BASE_LENGTH 0.08 // meters
-//#define METERS_PER_TICK 0.00020944 // meters
-//#define ADC_PER_METER_PER_SECOND_PER_SECOND 1670.13251784
-//define ADC_PER_RADIANS_PER_SECOND 7505.74711621
 
 #include "mapping/occupancy_grid.hpp"
 #include "mapping/occupancy_grid_utils.hpp"
 #include <math/point.hpp>
 #include "occupancy_map.hpp"
-#include "laser_matcher.hpp"
 #include <math/gsl_util_rand.h>
 
 
@@ -52,17 +47,13 @@ class state_t
 
         pthread_mutex_t data_mutex;
         pthread_mutex_t run_mutex;
-        //save for the path from odometry and action model
-        std::deque<maebot_pose_t> odo_path;
-        maebot_motor_feedback_t prev;
-        maebot_motor_feedback_t next;
-        action_model action_error_model;
-        std::deque<maebot_laser> curr_lasers;
-        laser_matcher matcher;
+              
         particle_data particles;
 
+        action_model action_error_model;
+        pose_tracker bot_tracker;
+
         // vx stuff	
-        int running;
         vx_application_t app;
         vx_world_t * world;
         zhash_t * layers;
@@ -72,25 +63,28 @@ class state_t
         image_u8_t *image_buf;
 
     public:
-        state_t(){
+        state_t()
+        {
+            //GUI init stuff
             layers = zhash_create(sizeof(vx_display_t*),sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);
-            running = 1;
             app.impl= this;
             app.display_started = display_started;
             app.display_finished = display_finished;
             world = vx_world_create();
             pthread_mutex_init (&mutex, NULL);
 
+            //initialize particles at (0,0,0)
             maebot_pose_t temp;
             temp.x=0;
             temp.y=0;
             temp.theta=0;
-            particles = particle_data(1000,temp);
+            particles = particle_data(1000, temp);
 
             read_map();
+
             action_error_model = action_model();
-            odo_path.push_back(temp);
-            matcher.push_pose(&temp); 
+            bot_tracker = pose_tracker();
+
             if (pthread_mutex_init(&run_mutex, NULL)) {
                 printf("run mutex init failed\n");
                 exit(1);
@@ -99,80 +93,59 @@ class state_t
                 printf("pose_curr mutex init failed\n");
                 exit(1);
             }
-            image_buf = nullptr; 
-            //lcm.subscribe("MAEBOT_POSE",&state_t::pose_data_handler,this);
+
+            image_buf = nullptr;
+
             lcm.subscribe("MAEBOT_LASER_SCAN", &state_t::laser_scan_handler,this);
         }
 
-        ~state_t(){
+        ~state_t()
+        {
             vx_world_destroy(world);
             assert(zhash_size(layers) == 0);
             zhash_destroy(layers);
             pthread_mutex_destroy(&mutex);
             pthread_mutex_destroy(&run_mutex);
-            //pthread_mutex_destroy(&state->odo_points_mutex);
             pthread_mutex_destroy(&data_mutex);
-            //pthread_mutex_destroy(&state->odo_curr_mutex);
-            //lcm_destroy(state->lcm);
-            running = 0;
+            lcm_destroy(state->lcm);
             image_u8_destroy(image_buf);
         }
 
-        void init_thread(){
+        void init_thread()
+        {
             pthread_create(&lcm_thread_pid,NULL,&state_t::run_lcm,this);
             pthread_create(&animate_thread,NULL,&state_t::render_loop,this);
         }
 
-
-
-        void odo_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_motor_feedback_t *msg){
+        void odo_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_motor_feedback_t *msg)
+        {
             pthread_mutex_lock(&data_mutex);
-            //store into odo matcher
-            if(prev.utime != -1 && next.utime != -1){
-                prev = next;
-                next = *msg;
-                //calc new pose
-                action_error_model.init_model(prev,next);
-                maebot_pose_t new_pose = action_error_model.get_new_pose(odo_path.back());
-                odo_path.push_back(new_pose);
-                matcher.push_pose(&new_pose);
-            }
-            else if(prev.utime != -1){
-                next = *msg;
-                //calc new pose
-                action_error_model.init_model(prev,next);
-                maebot_pose_t new_pose = action_error_model.get_new_pose(odo_path.back());
-                odo_path.push_back(new_pose);
-                matcher.push_pose(&new_pose);
-            }
-            else{
-                prev = *msg;
-            }
+                
+                bot_tracker.push_msg(msg, &action_error_model); //RMC - pretty sure this needs to be a reference.. 90%
+            
             pthread_mutex_unlock(&data_mutex);
         }
 
-        void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg){
+        void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg)
+        {
             pthread_mutex_lock(&data_mutex);
-            //calc deltas
-            //push lasers to the matcher
-            matcher.push_laser(msg);
-            //match lasers with the pose data calculated from odometry
-            matcher.process();
-            //now one scan of the laser has the interpolated position
-            curr_lasers = matcher.get_processed_laser();
-            //add this to make it run smooth
-            if(curr_lasers.empty()){
-                pthread_mutex_unlock(&data_mutex);
-                return;
-            }
-            //start calc deltas here and do the translation
-            particles.translate(0.5, 0.5, 3.14/2.0);
-            //correct
-            //find best
+
+                //stall for new pose
+                while (bot_tracker.recent_pose_time() < msg->utime) {}
+
+                //calc deltas and translate
+                particles.translate(bot_tracker.calc_deltas(msg->utime));
+
+                //localize
+                particles.calc_weight(&grid, msg);
+
+                //find best
+
             pthread_mutex_unlock(&data_mutex);
         }
 
-        static void* run_lcm(void *input){
+        static void* run_lcm(void *input)
+        {
             state_t* state = (state_t*) input;
             while(1){
                 state->lcm.handle();
@@ -180,7 +153,8 @@ class state_t
             return NULL;
         }
 
-        static void draw(state_t* state, vx_world_t* world){    
+        static void draw(state_t* state, vx_world_t* world)
+        {    
             vx_buffer_t *buf = vx_world_get_buffer(state->world,"map");
             render_grid(state);
             eecs467::OccupancyGrid& grid = state->map.get_grid();
@@ -212,7 +186,8 @@ class state_t
             }
         }
 
-        static void save_map(state_t *state){
+        static void save_map(state_t *state)
+        {
             FILE *fp;
             fp = fopen("occupancy_map.txt","w");
             eecs467::OccupancyGrid& grid = state->map.get_grid();
@@ -226,7 +201,8 @@ class state_t
             fclose(fp);
         }
 
-        void read_map(){
+        void read_map()
+        {
             FILE *fp;
             uint8_t temp;
             fp = fopen("occupancy_map.txt","r");
@@ -250,8 +226,8 @@ class state_t
             fclose(fp);
         }
 
-        static void* render_loop(void* data) {
-
+        static void* render_loop(void* data)
+        {
             state_t * state = (state_t*) data;
 
             while (1) {
@@ -334,10 +310,10 @@ class state_t
 
 };
 
-state_t state;
-
 int main(int argc, char ** argv)
 {
+    state_t state;
+
     state.init_thread();
     state.draw(&state,state.world);
     gdk_threads_init();

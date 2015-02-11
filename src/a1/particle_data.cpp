@@ -39,8 +39,12 @@ int particle_data::get_size(){
 }
 
 
-void particle_data::translate(float dx, float dy, float dt){
-	gslu_rand_seed();
+void particle_data::translate(maebot_pose_delta_t deltas){
+	float dx = deltas.x;
+    float dy = deltas.y;
+    float dt = deltas.theta;
+
+    gslu_rand_seed();
 	gsl_rng * obj = gslu_rand_rng_alloc ();
 
 	for(int i=0; i< number; ++i){
