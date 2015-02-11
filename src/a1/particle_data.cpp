@@ -21,9 +21,10 @@ particle_data::particle_data(int numb, maebot_pose_t starting_loc){
 
 	for(int i=0; i < number ; ++i){
 		pose.push_back(starting_loc);
-        double temp = 1/numb;
+        float temp = 0.001;
 		weight.push_back(temp);
 	}
+    printf("weight of the 100th: %f\n", weight[100]);
 }
 
 maebot_pose_t particle_data::get_pose(int index){
@@ -40,6 +41,7 @@ int particle_data::get_size(){
 
 
 void particle_data::translate(maebot_pose_delta_t deltas){
+    printf("past gotdeltas\n");
 	float dx = deltas.x;
     float dy = deltas.y;
     float dt = deltas.theta;
@@ -155,19 +157,20 @@ void particle_data::calc_weight(eecs467::OccupancyGrid &grid, const maebot_laser
 maebot_pose_t particle_data::get_best(){
 	int highest_index=0;
 	for(int i=0; i< number; ++i){
-		if(weight[i] > highest_index){
-			highest_index = weight[i];
+		if(weight[i] > weight[highest_index] ){
+			highest_index = i;
 		}
 	}
 
+    printf("highest index: %d\n", highest_index);
 	return pose[highest_index];
 }
 
 float* particle_data::get_particle_coords(){
     float pts[3*number];
     for(int i=0;i<pose.size();++i){
-        pts[3*i+0] = pose[i].x;
-        pts[3*i+1] = pose[i].y;
+        pts[3*i+0] = pose[i].x*15;
+        pts[3*i+1] = pose[i].y*15;
         pts[3*i+2] = 0;
     }
     return pts;

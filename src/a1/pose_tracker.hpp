@@ -17,10 +17,11 @@ class pose_tracker
 	    void push_msg(maebot_motor_feedback_t msg, action_model & model);
 	    maebot_pose_delta_t calc_deltas(int64_t t);
 	    int64_t recent_pose_time();
+	    maebot_pose_t prev_best_particle;
 
 	private:
 	    std::deque<maebot_motor_feedback_t> odo_msgs;
-	    maebot_pose_t last_calc_pose;
+	    
 };
 
 #endif

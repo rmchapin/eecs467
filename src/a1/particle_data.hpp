@@ -25,9 +25,9 @@ public:
     float* get_particle_coords();
     ~particle_data(){};
     std::deque<maebot_pose_t> pose;
-    int number;
-private:
     std::deque<float> weight;
+    int number;
+    
 };
 
 #endif

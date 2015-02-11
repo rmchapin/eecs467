@@ -141,29 +141,48 @@ class state_t
         {
 
 
-
-
             //calc laser avg time
-            printf("num ranges:%f", msg->num_ranges );
-            printf("msg time 0: %f, msg last time: %f\n", msg->times[0], msg->times[3]);
+             for(int i=0; i< 10; ++i){
+            printf("%f ,", particles.weight[i]);
+                        }
+            printf("num ranges:%d\n", msg->num_ranges );
+            printf("msg time 0: %d, msg last time: %d\n", msg->times[0], msg->times[msg->num_ranges-1]);
+            pthread_mutex_lock(&data_mutex);
             int64_t laser_avg_time = (msg->times[0] + msg->times[msg->num_ranges - 1]) / 2;
 
             //stall for new pose
-            printf("bot_tracker time: %f", bot_tracker.recent_pose_time() );
-            printf("laser avg time: %f", laser_avg_time);
-            while (bot_tracker.recent_pose_time() < laser_avg_time) { 
-                printf("stalling\n");
+            int64_t replacement;
+            replacement = bot_tracker.recent_pose_time();
+            pthread_mutex_unlock(&data_mutex);
+
+            while (replacement < laser_avg_time) { 
+                // printf("bot_tracker time: %d", bot_tracker.recent_pose_time() );
+                // printf("laser avg time: %d\n", laser_avg_time);
+                // usleep(100000);
+
+                pthread_mutex_lock(&data_mutex);
+                replacement = bot_tracker.recent_pose_time();
+                pthread_mutex_unlock(&data_mutex);
+
             }
-            pthread_mutex_lock(&data_mutex);
+            printf("past stall\n");
+            
             //calc deltas and translate
+
             particles.translate(bot_tracker.calc_deltas(laser_avg_time));
 
+            printf("past translate\n");
             //localize
             particles.calc_weight(map.grid, *msg);
 
             //find best
+            printf("past localize\n");
             maebot_pose_t best_particle = particles.get_best();
+            printf("past getbest\n");
             our_path.push_back(best_particle);
+            bot_tracker.prev_best_particle = best_particle;
+
+ printf("\n");
 
             //update map using best particle and lasers
 
@@ -186,8 +205,8 @@ class state_t
             render_grid(state);
             eecs467::OccupancyGrid& grid = state->map.get_grid();
             eecs467::Point<float> origin = grid.originInGlobalFrame();
-            vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x,origin.y,-0.01),
-                    vxo_mat_scale((double)grid.metersPerCell()),
+            vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
+                    vxo_mat_scale((double)grid.metersPerCell()*15),
                     vxo_image_from_u8(state->image_buf,0,0));
             vx_buffer_add_back(buf,vo);
             vx_buffer_swap(buf);
@@ -300,8 +319,8 @@ class state_t
                 }
                 if(state->bot_tracker.poses.size() > 1){
                     for(int i = 1; i < state->bot_tracker.poses.size();++i){
-                        float pts[] = {state->bot_tracker.poses[i].x,state->bot_tracker.poses[i].y,0.0,
-                            state->bot_tracker.poses[i-1].x,state->bot_tracker.poses[i-1].y,0.0};
+                        float pts[] = {state->bot_tracker.poses[i].x*15,state->bot_tracker.poses[i].y*15,0.0,
+                            state->bot_tracker.poses[i-1].x*15,state->bot_tracker.poses[i-1].y*15,0.0};
                         //float pts[] = {0*15,0*15,0,15,15,0};
                         vx_resc_t *verts = vx_resc_copyf(pts,6);
                         vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,2.0f)));
@@ -310,8 +329,8 @@ class state_t
                 }
                 if(state->our_path.size() > 1){
                     for(int i = 1; i < state->our_path.size();++i){
-                        float pts[] = {state->our_path[i].x,state->our_path[i].y,0.0,
-                            state->our_path[i-1].x,state->our_path[i-1].y,0.0};
+                        float pts[] = {state->our_path[i].x*15,state->our_path[i].y*15,0.0,
+                            state->our_path[i-1].x*15,state->our_path[i-1].y*15,0.0};
                         //float pts[] = {0*15,0*15,0,15,15,0};
                         vx_resc_t *verts = vx_resc_copyf(pts,6);
                         vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
@@ -319,8 +338,8 @@ class state_t
                 }
                 if(state->collins_path.size() > 1){
                     for(int i = 1; i < state->collins_path.size();++i){
-                        float pts[] = {state->collins_path[i].x,state->collins_path[i].y,0.0,
-                            state->collins_path[i-1].x,state->collins_path[i-1].y,0.0};
+                        float pts[] = {state->collins_path[i].x*15,state->collins_path[i].y*15,0.0,
+                            state->collins_path[i-1].x*15,state->collins_path[i-1].y*15,0.0};
                         //float pts[] = {0*15,0*15,0,15,15,0};
                         vx_resc_t *verts = vx_resc_copyf(pts,6);
                         vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_black,2.0f)));
