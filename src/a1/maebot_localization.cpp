@@ -47,7 +47,7 @@ class state_t
 
         pthread_mutex_t data_mutex;
         pthread_mutex_t run_mutex;
-              
+
         particle_data particles;
 
         action_model action_error_model;
@@ -120,9 +120,9 @@ class state_t
         void odo_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_motor_feedback_t *msg)
         {
             pthread_mutex_lock(&data_mutex);
-                
-                bot_tracker.push_msg(msg, &action_error_model); //RMC - pretty sure this needs to be a reference.. 90%
-            
+
+            bot_tracker.push_msg(msg, &action_error_model); //RMC - pretty sure this needs to be a reference.. 90%
+
             pthread_mutex_unlock(&data_mutex);
         }
 
@@ -130,16 +130,16 @@ class state_t
         {
             pthread_mutex_lock(&data_mutex);
 
-                //stall for new pose
-                while (bot_tracker.recent_pose_time() < msg->utime) {}
+            //stall for new pose
+            while (bot_tracker.recent_pose_time() < msg->utime) {}
 
-                //calc deltas and translate
-                particles.translate(bot_tracker.calc_deltas(msg->utime));
+            //calc deltas and translate
+            particles.translate(bot_tracker.calc_deltas(msg->utime));
 
-                //localize
-                particles.calc_weight(&grid, msg);
+            //localize
+            particles.calc_weight(&grid, msg);
 
-                //find best
+            //find best
 
             pthread_mutex_unlock(&data_mutex);
         }
@@ -159,9 +159,9 @@ class state_t
             render_grid(state);
             eecs467::OccupancyGrid& grid = state->map.get_grid();
             eecs467::Point<float> origin = grid.originInGlobalFrame();
-            vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
-                        vxo_mat_scale((double)grid.metersPerCell()*15),
-                        vxo_image_from_u8(state->image_buf,0,0));
+            vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x,origin.y,-0.01),
+                    vxo_mat_scale((double)grid.metersPerCell()),
+                    vxo_image_from_u8(state->image_buf,0,0));
             vx_buffer_add_back(buf,vo);
             vx_buffer_swap(buf);
         }
@@ -234,31 +234,31 @@ class state_t
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->world,"pose_data");
                 /*render_grid(state);
-                eecs467::OccupancyGrid& grid = state->map.get_grid();
-                eecs467::Point<float> origin = grid.originInGlobalFrame();
-                vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
-                        vxo_mat_scale((double)grid.metersPerCell()*15),
-                        vxo_image_from_u8(state->image_buf,0,0));
-                vx_buffer_add_back(buf,vo);*/
+                  eecs467::OccupancyGrid& grid = state->map.get_grid();
+                  eecs467::Point<float> origin = grid.originInGlobalFrame();
+                  vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
+                  vxo_mat_scale((double)grid.metersPerCell()*15),
+                  vxo_image_from_u8(state->image_buf,0,0));
+                  vx_buffer_add_back(buf,vo);*/
 
                 /*if(state->path.size() > 1){
-                    for(int i = 1; i < state->path.size();++i){
-                        float pts[] = {state->path[i].x*15,state->path[i].y*15,0.0,
-                            state->path[i-1].x*15,state->path[i-1].y*15,0.0};
-                        //float pts[] = {0*15,0*15,0,15,15,0};
-                        vx_resc_t *verts = vx_resc_copyf(pts,6);
-                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
-                    }
-                    for(int i=0;i<state->curr_lasers.size();i+=5){
-                        float pts[] = {state->curr_lasers[i].get_x_pos()*15,state->curr_lasers[i].get_y_pos()*15,0.0,
-                            state->curr_lasers[i].get_x_end_pos()*15,state->curr_lasers[i].get_y_end_pos()*15,0.0};
-                        vx_resc_t *verts = vx_resc_copyf(pts,6);
-                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,1.0f)));
-                    }
-                    char buffer[50];
-                    sprintf(buffer,"<<center, #000000>> (%.2f,%.2f,%.2f)\n",state->path.back().x,state->path.back().y,state->path.back().theta);
-                    vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
-                    vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_LEFT, vxo_chain(vxo_mat_translate2(70,8),vxo_mat_scale(0.8),data_size)));
+                  for(int i = 1; i < state->path.size();++i){
+                  float pts[] = {state->path[i].x*15,state->path[i].y*15,0.0,
+                  state->path[i-1].x*15,state->path[i-1].y*15,0.0};
+                //float pts[] = {0*15,0*15,0,15,15,0};
+                vx_resc_t *verts = vx_resc_copyf(pts,6);
+                vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
+                }
+                for(int i=0;i<state->curr_lasers.size();i+=5){
+                float pts[] = {state->curr_lasers[i].get_x_pos()*15,state->curr_lasers[i].get_y_pos()*15,0.0,
+                state->curr_lasers[i].get_x_end_pos()*15,state->curr_lasers[i].get_y_end_pos()*15,0.0};
+                vx_resc_t *verts = vx_resc_copyf(pts,6);
+                vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,1.0f)));
+                }
+                char buffer[50];
+                sprintf(buffer,"<<center, #000000>> (%.2f,%.2f,%.2f)\n",state->path.back().x,state->path.back().y,state->path.back().theta);
+                vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
+                vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_LEFT, vxo_chain(vxo_mat_translate2(70,8),vxo_mat_scale(0.8),data_size)));
                 }
                 char buffer[50];
                 sprintf(buffer,"<<center, #000000>> laser_size: %d \n",state->curr_lasers.size());
@@ -270,6 +270,16 @@ class state_t
                     int npoints = state->particles.number;
                     vx_resc_t *verts = vx_resc_copyf(pts, npoints*3);
                     vx_buffer_add_back(buf, vxo_points(verts, npoints, vxo_points_style(vx_green, 2.0f)));
+                }
+                if(state->bot_tracker.poses.size() > 1){
+                    for(int i = 1; i < state->bot_tracker.poses.size();++i){
+                        float pts[] = {state->bot_tracker.poses[i].x,state->bot_tracker.poses[i].y,0.0,
+                            state->bot_tracker.poses[i-1].x,state->bot_tracker.poses[i-1].y,0.0};
+                        //float pts[] = {0*15,0*15,0,15,15,0};
+                        vx_resc_t *verts = vx_resc_copyf(pts,6);
+                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
+                    }
+
                 }
                 pthread_mutex_unlock(&state->data_mutex);
                 vx_buffer_swap(buf);
