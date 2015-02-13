@@ -198,7 +198,7 @@ class state_t
             fprintf(fp,"%d\n",grid.widthInCells());
             for(size_t y = 0; y < grid.heightInCells();y++){
                 for(size_t x = 0; x < grid.widthInCells(); x++){
-                    fprintf(fp,"%d\n",grid.logOdds(y,x));
+                    fprintf(fp,"%d\n",grid.logOdds(x,y));
                 }
             }
             fclose(fp);
