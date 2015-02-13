@@ -192,7 +192,7 @@ class state_t
 
         static void save_map(state_t *state){
             FILE *fp;
-            fp = fopen("occupancy_map.txt","w");
+            fp = fopen("empty_map.txt","w");
             eecs467::OccupancyGrid& grid = state->map.get_grid();
             fprintf(fp,"%d\n",grid.heightInCells());
             fprintf(fp,"%d\n",grid.widthInCells());
@@ -242,7 +242,7 @@ class state_t
                 sprintf(buffer,"<<center, #000000>> laser_size: %d \n",state->curr_lasers.size());
                 vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
                 vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_RIGHT, vxo_chain(vxo_mat_translate2(-70, 8), vxo_mat_scale(0.8), data_size)));
-
+                save_map(state);
                 pthread_mutex_unlock(&state->data_mutex);
                 vx_buffer_swap(buf);
                 usleep(5000);
