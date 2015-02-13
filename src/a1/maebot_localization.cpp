@@ -200,7 +200,7 @@ class state_t
         static void save_map(state_t *state)
         {
             FILE *fp;
-            fp = fopen("occupancy_map.txt","w");
+            fp = fopen("empty_map.txt","w");
             eecs467::OccupancyGrid& grid = state->map.get_grid();
             fprintf(fp,"%d\n",grid.heightInCells());
             fprintf(fp,"%d\n",grid.widthInCells());
@@ -216,7 +216,7 @@ class state_t
         {
             FILE *fp;
             uint8_t temp;
-            fp = fopen("occupancy_map.txt","r");
+            fp = fopen("empty_map.txt","r");
             fscanf(fp,"%d\n",&temp);
             if(temp != map.grid.heightInCells()){
                 std::cout << "Height not match\n";
