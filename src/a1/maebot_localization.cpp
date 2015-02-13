@@ -36,7 +36,7 @@
 #include "occupancy_map.hpp"
 #include <math/gsl_util_rand.h>
 
-static const char* MAP_TO_READ = "empty_map.txt";
+static const char* MAP_TO_READ = "figure_eight.txt";
 
 class state_t
 {
@@ -193,7 +193,7 @@ class state_t
             {
                 for (size_t x = 0; x < grid.widthInCells(); x++)
                 {
-                    state->image_buf->buf[(y * state->image_buf->stride) + x] = to_grayscale(grid.logOdds(y,x));
+                    state->image_buf->buf[(y * state->image_buf->stride) + x] = to_grayscale(grid.logOdds(x,y));
                 }
             }
         }
