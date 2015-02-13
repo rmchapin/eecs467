@@ -21,6 +21,7 @@ bool laser_matcher::push_pose(const maebot_pose_t *msg){
     return true;
 }
 
+
 void laser_matcher::process(){
     if(to_process_laser.empty()){
         return;

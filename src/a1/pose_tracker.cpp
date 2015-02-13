@@ -3,11 +3,15 @@
 pose_tracker::pose_tracker()
 {
 	//init last calculated pose
-	prev_best_particle.utime = 0;
+	/*prev_best_particle.utime = 0;
 	prev_best_particle.x = 0.0;
 	prev_best_particle.y = 0.0;
-	prev_best_particle.theta = 0.0;
-	poses.push_back(prev_best_particle);
+	prev_best_particle.theta = 0.0;*/
+    last_calc_pose.utime = 0;
+    last_calc_pose.x = 0.0;
+    last_calc_pose.y = 0.0;
+    last_calc_pose.theta = 0.0;
+	poses.push_back(last_calc_pose);
 }
 
 void pose_tracker::push_msg(maebot_motor_feedback_t msg, action_model & model)
@@ -63,13 +67,13 @@ maebot_pose_delta_t pose_tracker::calc_deltas(int64_t t)
     //calc deltas and return
 	maebot_pose_delta_t ret;
 	ret.utime = t;
-	ret.x = x_pos - prev_best_particle.x;
-	ret.y = y_pos - prev_best_particle.y;
-	ret.theta = theta - prev_best_particle.theta;
+	ret.x = x_pos - last_calc_pose.x;
+	ret.y = y_pos - last_calc_pose.y;
+	ret.theta = theta - last_calc_pose.theta;
 
-	/*last_calc_pose.x=x_pos;
+	last_calc_pose.x=x_pos;
 	last_calc_pose.y=y_pos;
-	last_calc_pose.theta=theta;*/
+	last_calc_pose.theta=theta;
 	return ret;
 }
 

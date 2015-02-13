@@ -49,11 +49,11 @@ class state_t
         pthread_mutex_t run_mutex;
 
         particle_data particles;
-        action_model action_error_model;
-        pose_tracker bot_tracker;
+        //action_model action_error_model;
+        //pose_tracker bot_tracker;
 
-        std::deque<maebot_pose_t> our_path;
-        std::deque<maebot_pose_t> collins_path;
+        std::vector<maebot_pose_t> our_path;
+        std::vector<maebot_pose_t> collins_path;
 
         // vx stuff	
         vx_application_t app;
@@ -67,6 +67,15 @@ class state_t
     public:
         state_t()
         {
+             //initialize particles at (0,0,0)
+            maebot_pose_t temp;
+            temp.x=0;
+            temp.y=0;
+            temp.theta=0;
+            
+            read_map();
+            particles = particle_data(1000, temp, &map.grid);
+
             //GUI init stuff
             layers = zhash_create(sizeof(vx_display_t*),sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);
             app.impl= this;
@@ -74,18 +83,9 @@ class state_t
             app.display_finished = display_finished;
             world = vx_world_create();
             pthread_mutex_init (&mutex, NULL);
-
-            //initialize particles at (0,0,0)
-            maebot_pose_t temp;
-            temp.x=0;
-            temp.y=0;
-            temp.theta=0;
-            particles = particle_data(1000, temp);
-
-            read_map();
-
-            action_error_model = action_model();
-            bot_tracker = pose_tracker();
+            gslu_rand_seed(); 
+            //action_error_model = action_model();
+            //bot_tracker = pose_tracker();
 
             if (pthread_mutex_init(&run_mutex, NULL)) {
                 printf("run mutex init failed\n");
@@ -132,61 +132,26 @@ class state_t
         {
             pthread_mutex_lock(&data_mutex);
             //printf("start pushing\n");
-            bot_tracker.push_msg(*msg, action_error_model);
-
+            //bot_tracker.push_msg(*msg, action_error_model);
+            particles.push_odo(*msg);
+            pthread_mutex_unlock(&data_mutex);
+             
+            pthread_mutex_lock(&data_mutex);
+            if(particles.ready()){
+                particles.update();
+                printf("best particle: %f %f\n",particles.get_best().x,particles.get_best().y);
+                our_path.push_back(particles.get_best());
+            } 
             pthread_mutex_unlock(&data_mutex);
         }
 
         void laser_scan_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_laser_scan_t *msg)
         {
-
-
-            //calc laser avg time
-             for(int i=0; i< 10; ++i){
-            printf("%f ,", particles.weight[i]);
-                        }
-            printf("num ranges:%d\n", msg->num_ranges );
-            printf("msg time 0: %d, msg last time: %d\n", msg->times[0], msg->times[msg->num_ranges-1]);
             pthread_mutex_lock(&data_mutex);
-            int64_t laser_avg_time = (msg->times[0] + msg->times[msg->num_ranges - 1]) / 2;
-
-            //stall for new pose
-            int64_t replacement;
-            replacement = bot_tracker.recent_pose_time();
-            pthread_mutex_unlock(&data_mutex);
-
-            while (replacement < laser_avg_time) { 
-                // printf("bot_tracker time: %d", bot_tracker.recent_pose_time() );
-                // printf("laser avg time: %d\n", laser_avg_time);
-                // usleep(100000);
-
-                pthread_mutex_lock(&data_mutex);
-                replacement = bot_tracker.recent_pose_time();
-                pthread_mutex_unlock(&data_mutex);
-
-            }
-            printf("past stall\n");
-            
-            //calc deltas and translate
-
-            particles.translate(bot_tracker.calc_deltas(laser_avg_time));
-
-            printf("past translate\n");
-            //localize
-            particles.calc_weight(map.grid, *msg);
-
-            //find best
-            printf("past localize\n");
-            maebot_pose_t best_particle = particles.get_best();
-            printf("past getbest\n");
-            our_path.push_back(best_particle);
-            bot_tracker.prev_best_particle = best_particle;
-
- printf("\n");
-
-            //update map using best particle and lasers
-
-
+            printf("laser handle\n");
+            if(particles.processing == false){
+                particles.push_scan(*msg);
+            }            
             pthread_mutex_unlock(&data_mutex);
         }
 
@@ -311,22 +276,12 @@ class state_t
                 vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
                 vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_RIGHT, vxo_chain(vxo_mat_translate2(-70, 8), vxo_mat_scale(0.8), data_size)));
                 */
-                if(state->particles.pose.size() > 1){
+                if(state->particles.get_size() > 1){
                     float* pts = state->particles.get_particle_coords();
-                    int npoints = state->particles.number;
+                    int npoints = state->particles.get_size();
                     vx_resc_t *verts = vx_resc_copyf(pts, npoints*3);
                     vx_buffer_add_back(buf, vxo_points(verts, npoints, vxo_points_style(vx_green, 2.0f)));
-                }
-                if(state->bot_tracker.poses.size() > 1){
-                    for(int i = 1; i < state->bot_tracker.poses.size();++i){
-                        float pts[] = {state->bot_tracker.poses[i].x*15,state->bot_tracker.poses[i].y*15,0.0,
-                            state->bot_tracker.poses[i-1].x*15,state->bot_tracker.poses[i-1].y*15,0.0};
-                        //float pts[] = {0*15,0*15,0,15,15,0};
-                        vx_resc_t *verts = vx_resc_copyf(pts,6);
-                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,2.0f)));
-                    }
-
-                }
+                } 
                 if(state->our_path.size() > 1){
                     for(int i = 1; i < state->our_path.size();++i){
                         float pts[] = {state->our_path[i].x*15,state->our_path[i].y*15,0.0,

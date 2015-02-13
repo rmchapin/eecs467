@@ -30,15 +30,15 @@ LIB_MAPPING = $(LIB_PATH)/libmapping.a
 
 
 LIB_A1 = $(LIB_PATH)/liba1.a
-LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o pose_tracker.o maebot_data.o 
-#odometry_matcher.o laser_matcher.o 
+LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o maebot_data.o sensor_model.o odometry_matcher.o 
+#laser_matcher.o pose_tracker.o 
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 BIN_LCM_HANDLE_TEST = $(BIN_PATH)/lcm_handle_test
 BIN_MAEBOT_LOCALIZATION = $(BIN_PATH)/maebot_localization
 
-ALL = $(LIB_A1) $(BIN_LCM_HANDLE_TEST) $(BIN_MAEBOT_LOCALIZATION)
+ALL = $(LIB_A1) $(BIN_MAEBOT_LOCALIZATION)
 
 all: $(ALL)
 
