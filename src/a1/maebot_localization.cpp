@@ -36,6 +36,7 @@
 #include "occupancy_map.hpp"
 #include <math/gsl_util_rand.h>
 
+static const char* MAP_TO_READ = "empty_map.txt";
 
 class state_t
 {
@@ -216,7 +217,7 @@ class state_t
         {
             FILE *fp;
             uint8_t temp;
-            fp = fopen("empty_map.txt","r");
+            fp = fopen(MAP_TO_READ,"r");
             fscanf(fp,"%d\n",&temp);
             if(temp != map.grid.heightInCells()){
                 std::cout << "Height not match\n";
