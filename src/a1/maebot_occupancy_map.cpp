@@ -185,7 +185,7 @@ class state_t
             {
                 for (size_t x = 0; x < grid.widthInCells(); x++)
                 {
-                    state->image_buf->buf[(y * state->image_buf->stride) + x] = to_grayscale(grid.logOdds(y,x));
+                    state->image_buf->buf[(y * state->image_buf->stride) + x] = to_grayscale(grid.logOdds(x,y));
                 }
             }
         }
