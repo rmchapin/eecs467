@@ -26,11 +26,11 @@ void occupancy_map::update(std::vector<maebot_laser> lasers){
             sample_cell = global_position_to_grid_cell(eecs467::Point<float>(sample_x,sample_y),grid);
             if(grid.isCellInGrid(sample_cell.x,sample_cell.y)){
                 int8_t odds = grid.logOdds(sample_cell.x,sample_cell.y); 
-                if(odds < (-128+2)){
+                if(odds < (-128+10)){
                     grid.setLogOdds(sample_cell.x,sample_cell.y,-128);
                 }
                 else{
-                    odds -= 2;
+                    odds -= 10;
                     grid.setLogOdds(sample_cell.x,sample_cell.y,odds);
                 }
             } 
@@ -43,11 +43,11 @@ void occupancy_map::update(std::vector<maebot_laser> lasers){
         sample_cell = global_position_to_grid_cell(eecs467::Point<float>(sample_x,sample_y),grid);
         if(grid.isCellInGrid(sample_cell.x,sample_cell.y)){
             int8_t odds = grid.logOdds(sample_cell.x,sample_cell.y); 
-            if(odds > (127-2)){
+            if(odds > (127-20)){
                 grid.setLogOdds(sample_cell.x,sample_cell.y,127);
             }
             else{
-                odds += 2;
+                odds += 20;
                 grid.setLogOdds(sample_cell.x,sample_cell.y,odds);
             }
         } 

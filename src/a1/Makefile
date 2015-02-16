@@ -30,7 +30,7 @@ LIB_MAPPING = $(LIB_PATH)/libmapping.a
 
 
 LIB_A1 = $(LIB_PATH)/liba1.a
-LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o maebot_data.o sensor_model.o odometry_matcher.o	laser_matcher.o path_planning.o 
+LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o maebot_data.o sensor_model.o odometry_matcher.o	laser_matcher.o #path_planning.o 
 #pose_tracker.o 
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))

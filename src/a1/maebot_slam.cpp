@@ -80,7 +80,7 @@ class state_t
             //read_map();
             //particles.has_map = true;
             map = occupancy_map(5.0,5.0,0.05,1.0);
-            particles = particle_data(1000, temp, &map.grid);
+            particles = particle_data(1500, temp, &map.grid);
             first_scan = true;
             //GUI init stuff
             layers = zhash_create(sizeof(vx_display_t*),sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);

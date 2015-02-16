@@ -1,7 +1,7 @@
 #include "action_model.hpp"
 #include <math.h>
 #include <math/angle_functions.hpp>
-action_model::action_model():k1(8.0),k2(0.8){
+action_model::action_model():k1(5.0),k2(0.5){
     rand_gen = gslu_rand_rng_alloc(); 
 }
 
