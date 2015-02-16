@@ -30,15 +30,17 @@ LIB_MAPPING = $(LIB_PATH)/libmapping.a
 
 
 LIB_A1 = $(LIB_PATH)/liba1.a
-LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o maebot_data.o sensor_model.o odometry_matcher.o 
-#laser_matcher.o pose_tracker.o 
+LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o maebot_data.o sensor_model.o odometry_matcher.o	laser_matcher.o path_planning.o 
+#pose_tracker.o 
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 BIN_LCM_HANDLE_TEST = $(BIN_PATH)/lcm_handle_test
 BIN_MAEBOT_LOCALIZATION = $(BIN_PATH)/maebot_localization
+BIN_MAEBOT_LOCALIZATION_ERROR = $(BIN_PATH)/maebot_localization_error
+BIN_MAEBOT_SLAM = $(BIN_PATH)/maebot_slam
 
-ALL = $(LIB_A1) $(BIN_MAEBOT_LOCALIZATION)
+ALL = $(LIB_A1) $(BIN_MAEBOT_LOCALIZATION) $(BIN_MAEBOT_LOCALIZATION_ERROR) $(BIN_MAEBOT_SLAM)
 
 all: $(ALL)
 
@@ -51,6 +53,14 @@ $(BIN_LCM_HANDLE_TEST): lcm_handle_test.o $(LIBDEPS)
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
 $(BIN_MAEBOT_LOCALIZATION): maebot_localization.o $(LIBDEPS) $(LIB_A1) $(LIB_MAPPING)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
+
+$(BIN_MAEBOT_LOCALIZATION_ERROR): maebot_localization_error.o $(LIBDEPS) $(LIB_A1) $(LIB_MAPPING)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
+
+$(BIN_MAEBOT_SLAM): maebot_slam.o $(LIBDEPS) $(LIB_A1) $(LIB_MAPPING)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 

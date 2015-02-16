@@ -27,12 +27,15 @@ public:
     maebot_pose_t get_pose(int index);
     float get_weight(int index);
     int get_size();
+    maebot_laser_scan_t get_scan();
     maebot_pose_t get_best();
     float* get_particle_coords();
     ~particle_data(){};
     bool processing;
     bool has_scan;
- 
+    bool has_map;
+    sensor_model s_model;
+
 private:   
     std::vector<maebot_pose_t> pose;
     std::vector<float> weight;
@@ -41,7 +44,6 @@ private:
     int number;
     gsl_rng* rand_gen;
     action_model a_model;
-    sensor_model s_model;
     odometry_matcher odo_matcher;
     maebot_laser_scan_t scan;
 };

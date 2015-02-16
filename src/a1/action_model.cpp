@@ -1,7 +1,7 @@
 #include "action_model.hpp"
 #include <math.h>
 #include <math/angle_functions.hpp>
-action_model::action_model():k1(3.0),k2(0.4){
+action_model::action_model():k1(8.0),k2(0.8){
     rand_gen = gslu_rand_rng_alloc(); 
 }
 
@@ -39,7 +39,7 @@ maebot_pose_t action_model::gen_pose(maebot_pose_t prev_pose)
     float rot1 = gslu_rand_gaussian(rand_gen,0,sqrt(fabs(a*k1)));
     float trans = gslu_rand_gaussian(rand_gen,0,sqrt(fabs(delta_s*k2)));
     float rot2 = gslu_rand_gaussian(rand_gen,0,sqrt(fabs(eecs467::wrap_to_pi(dtheta-a)*k1)));
-    //printf("rot1: %f trans: %f rot2: %f\n",rot1,trans,rot2);
+    //printf("rot1: %f trans: %f rot2: %f\n",rot1,trans,rot2);*/
     maebot_pose_t ret_pose;
     ret_pose.x = prev_pose.x + fabs(trans)*cosf(prev_pose.theta + rot1);
     ret_pose.y = prev_pose.y + fabs(trans)*sinf(prev_pose.theta + rot1);

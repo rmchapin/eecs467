@@ -26,7 +26,7 @@ void odometry_matcher::update(maebot_motor_feedback_t msg){
     else{
         curr = msg;
     }
-    printf("odo matcher updated\n");
+    //printf("odo matcher updated\n");
     //printf("msg: %d\n",msg.encoder_left_ticks);
     //printf("prev: %d\n",prev.encoder_left_ticks);
     //printf("curr: %d\n", curr.encoder_left_ticks);

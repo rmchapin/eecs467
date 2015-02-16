@@ -37,7 +37,7 @@
 #include "occupancy_map.hpp"
 #include <math/gsl_util_rand.h>
 
-static const char* MAP_TO_READ;
+static const char* MAP_TO_READ = "figure_eight.txt";
 
 class state_t
 {
@@ -57,8 +57,8 @@ class state_t
 
         std::vector<maebot_pose_t> our_path;
         std::vector<maebot_pose_t> collins_path;
-        //std::deque<maebot_laser> curr_lasers;
-        //bool first_scan;
+        std::vector<maebot_laser> curr_lasers;
+        bool first_scan;
         // vx stuff	
         vx_application_t app;
         vx_world_t * world;
@@ -78,10 +78,10 @@ class state_t
             temp.theta=0;
 
             //read_map();
+            //particles.has_map = true;
             map = occupancy_map(5.0,5.0,0.05,1.0);
             particles = particle_data(1000, temp, &map.grid);
-            read_map();
-            //first_scan = true;
+            first_scan = true;
             //GUI init stuff
             layers = zhash_create(sizeof(vx_display_t*),sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);
             app.impl= this;
@@ -146,11 +146,15 @@ class state_t
             pthread_mutex_lock(&data_mutex);
             if(particles.ready()){
                 //printf("particle filter process\n");
+                maebot_pose_t old_best = particles.get_best();
                 particles.update();
                 //printf("best particle: %f %f\n",particles.get_best().x,particles.get_best().y);
                 maebot_pose_t best = particles.get_best();
+                //maebot_laser_scan_t scan_msg = particles.get_scan();
+                curr_lasers = particles.s_model.get_processed_laser_scan(particles.get_scan(),old_best,best);
+                map.update(curr_lasers);
+                particles.s_model.update_grid(&map.grid);
                 our_path.push_back(best);
-                //matcher.push_pose(&best);
             } 
             pthread_mutex_unlock(&data_mutex);
         }
@@ -160,15 +164,37 @@ class state_t
             pthread_mutex_lock(&data_mutex);
             //printf("laser handle\n");
             if(particles.processing == false){
-                particles.push_scan(*msg);
-                //matcher.push_laser(msg);
-                //matcher.process();
-                //curr_lasers = matcher.get_processed_laser();
-                //if(curr_lasers.empty()){
-                //    pthread_mutex_unlock(&data_mutex);
-                //    return;
-                //}
-                //particles.s_model.update_grid(&map.grid);
+                if(first_scan){
+                    //printf("first scan");
+                    for(int i=0;i<msg->num_ranges;++i){
+                        maebot_laser l = maebot_laser(msg->times[i],
+                                            msg->ranges[i],
+                                            -1.0*msg->thetas[i],
+                                            msg->intensities[i],
+                                            0,
+                                            0);
+                        //printf("%f %f\n",msg->ranges[i],msg->thetas[i]);
+                        curr_lasers.push_back(l);
+                    }
+                    first_scan = false;
+                    map.update(curr_lasers);
+                    particles.s_model.update_grid(&map.grid);
+                }
+                else{
+                    //printf("later scan\n");
+                    particles.push_scan(*msg);
+                    /*matcher.push_laser(msg);
+                    matcher.process();
+                    curr_lasers = matcher.get_processed_laser();
+                    if(curr_lasers.empty()){
+                        pthread_mutex_unlock(&data_mutex);
+                        return;
+                    }*/
+                }
+                /*map.update(curr_lasers);
+                particles.has_map = true;
+                particles.s_model.update_grid(&map.grid);*/
+
             } 
             pthread_mutex_unlock(&data_mutex);
         }
@@ -184,15 +210,15 @@ class state_t
 
         static void draw(state_t* state, vx_world_t* world)
         {    
-            vx_buffer_t *buf = vx_world_get_buffer(state->world,"map");
-            render_grid(state);
-            eecs467::OccupancyGrid& grid = state->map.get_grid();
-            eecs467::Point<float> origin = grid.originInGlobalFrame();
-            vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
-                    vxo_mat_scale((double)grid.metersPerCell()*15),
-                    vxo_image_from_u8(state->image_buf,0,0));
-            vx_buffer_add_back(buf,vo);
-            vx_buffer_swap(buf);
+            /*vx_buffer_t *buf = vx_world_get_buffer(state->world,"map");
+              render_grid(state);
+              eecs467::OccupancyGrid& grid = state->map.get_grid();
+              eecs467::Point<float> origin = grid.originInGlobalFrame();
+              vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
+              vxo_mat_scale((double)grid.metersPerCell()*15),
+              vxo_image_from_u8(state->image_buf,0,0));
+              vx_buffer_add_back(buf,vo);
+              vx_buffer_swap(buf);*/
         }
 
         static uint8_t to_grayscale(int8_t logOdds)
@@ -262,14 +288,14 @@ class state_t
             while (1) {
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->world,"pose_data");
-                /*render_grid(state);
+                render_grid(state);
                 eecs467::OccupancyGrid& grid = state->map.get_grid();
                 eecs467::Point<float> origin = grid.originInGlobalFrame();
                 vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
                         vxo_mat_scale((double)grid.metersPerCell()*15),
                         vxo_image_from_u8(state->image_buf,0,0));
                 vx_buffer_add_back(buf,vo);
-                */
+
                 /*if(state->path.size() > 1){
                   for(int i = 1; i < state->path.size();++i){
                   float pts[] = {state->path[i].x*15,state->path[i].y*15,0.0,
@@ -278,12 +304,12 @@ class state_t
                 vx_resc_t *verts = vx_resc_copyf(pts,6);
                 vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_red,2.0f)));
                 }*/
-                /*for(int i=0;i<state->curr_lasers.size();i+=5){
+                for(int i=0;i<state->curr_lasers.size();i+=5){
                     float pts[] = {state->curr_lasers[i].get_x_pos()*15,state->curr_lasers[i].get_y_pos()*15,0.0,
                         state->curr_lasers[i].get_x_end_pos()*15,state->curr_lasers[i].get_y_end_pos()*15,0.0};
                     vx_resc_t *verts = vx_resc_copyf(pts,6);
                     vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_blue,1.0f)));
-                }*/
+                }
                 /*char buffer[50];
                   sprintf(buffer,"<<center, #000000>> (%.2f,%.2f,%.2f)\n",state->path.back().x,state->path.back().y,state->path.back().theta);
                   vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
@@ -359,8 +385,6 @@ class state_t
 
 int main(int argc, char ** argv)
 {
-    MAP_TO_READ = argv[1];
-    printf("%s",MAP_TO_READ);
     state_t state;
     state.init_thread();
     //comment below disable the vx
