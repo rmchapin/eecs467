@@ -30,7 +30,7 @@ LIB_MAPPING = $(LIB_PATH)/libmapping.a
 
 
 LIB_A1 = $(LIB_PATH)/liba1.a
-LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o maebot_data.o sensor_model.o odometry_matcher.o	laser_matcher.o path_planning.o 
+LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o maebot_data.o sensor_model.o odometry_matcher.o path_planning.o 
 #pose_tracker.o 
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
@@ -40,7 +40,7 @@ BIN_MAEBOT_LOCALIZATION = $(BIN_PATH)/maebot_localization
 BIN_MAEBOT_LOCALIZATION_ERROR = $(BIN_PATH)/maebot_localization_error
 BIN_MAEBOT_SLAM = $(BIN_PATH)/maebot_slam
 BIN_PATH_PLANNING_TEST = $(BIN_PATH)/path_planning_test
-
+BIN_MAEBOT_OCCUPANCY_MAP = $(BIN_PATH)/maebot_occupancy_map
 ALL = $(LIB_A1) $(BIN_MAEBOT_LOCALIZATION) $(BIN_MAEBOT_LOCALIZATION_ERROR) $(BIN_MAEBOT_SLAM) $(BIN_PATH_PLANNING_TEST)
 
 all: $(ALL)

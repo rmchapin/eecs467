@@ -25,11 +25,9 @@
 #include "imagesource/image_util.h"
 #include "lcmtypes/maebot_motor_feedback_t.hpp"
 #include "lcmtypes/maebot_sensor_data_t.hpp"
-#include "lcm_handlers.hpp"
 #include "particle_data.hpp"
 #include "action_model.hpp"
 #include "pose_tracker.hpp"
-#include "laser_matcher.hpp"
 
 #include "mapping/occupancy_grid.hpp"
 #include "mapping/occupancy_grid_utils.hpp"
@@ -50,15 +48,16 @@ class state_t
         pthread_mutex_t data_mutex;
         pthread_mutex_t run_mutex;
 
-        laser_matcher matcher;
         particle_data particles;
         //action_model action_error_model;
         //pose_tracker bot_tracker;
-        
-        std::vector<maebot_pose_t> our_path;
-        std::vector<maebot_pose_t> collins_path;
-        std::vector<maebot_pose_t> our_display_path;
-        std::vector<maebot_pose_t> collins_display_path;
+
+        //std::vector<maebot_pose_t> our_path;
+        //std::vector<maebot_pose_t> collins_path;
+        //std::vector<maebot_pose_t> our_display_path;
+        //std::vector<maebot_pose_t> collins_display_path;
+        maebot_pose_t curr_collin_pose;
+        std::vector<float> error_path;
         //std::deque<maebot_laser> curr_lasers;
         //bool first_scan;
         // vx stuff	
@@ -131,8 +130,8 @@ class state_t
         void pose_handler (const lcm::ReceiveBuffer* rbuf, const std::string& channel,const maebot_pose_t *msg){
             pthread_mutex_lock(&data_mutex);
 
-            collins_path.push_back(*msg);
-
+            //collins_path.push_back(*msg);
+            curr_collin_pose = *msg;
             pthread_mutex_unlock(&data_mutex);
         }
 
@@ -151,7 +150,19 @@ class state_t
                 particles.update();
                 //printf("best particle: %f %f\n",particles.get_best().x,particles.get_best().y);
                 maebot_pose_t best = particles.get_best();
-                our_path.push_back(best);
+                float coeff = 0;
+                if(best.y > curr_collin_pose.y){
+                    coeff = 1;
+                }
+                else{
+                    coeff = -1;
+                }
+                float dy = best.y - curr_collin_pose.y;
+                float dx = best.x - curr_collin_pose.x;
+                float error = coeff*sqrt(dx*dx+dy*dy);
+                //printf("%f\n",error);
+                error_path.push_back(error);
+                //our_path.push_back(best);
                 //matcher.push_pose(&best);
             } 
             pthread_mutex_unlock(&data_mutex);
@@ -186,15 +197,22 @@ class state_t
 
         static void draw(state_t* state, vx_world_t* world)
         {    
-            /*vx_buffer_t *buf = vx_world_get_buffer(state->world,"map");
-              render_grid(state);
-              eecs467::OccupancyGrid& grid = state->map.get_grid();
-              eecs467::Point<float> origin = grid.originInGlobalFrame();
-              vx_object_t *vo = vxo_chain(vxo_mat_translate3(origin.x*15,origin.y*15,-0.01),
-              vxo_mat_scale((double)grid.metersPerCell()*15),
-              vxo_image_from_u8(state->image_buf,0,0));
-              vx_buffer_add_back(buf,vo);
-              vx_buffer_swap(buf);*/
+            vx_buffer_t *buf = vx_world_get_buffer(state->world,"map");
+            float pts[] = {-60,40,0,
+                           -60,-40,0};
+            vx_resc_t *verts = vx_resc_copyf(pts,6);
+            vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_black,4.0f)));
+            vx_object_t *neg_20 = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, "<<center, #000000>> -2m\n");
+            vx_object_t *pos_20 = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, "<<center, #000000>> +2m\n");
+            vx_object_t *zero = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, "<<center, #000000>> 0m\n");
+            vx_object_t *neg_10 = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, "<<center, #000000>> -1m\n");
+            vx_object_t *pos_10 = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, "<<center, #000000>> +1m\n");
+            vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_CENTER, vxo_chain(vxo_mat_translate2(-285, -170), vxo_mat_scale(0.8), neg_20))); 
+            vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_CENTER, vxo_chain(vxo_mat_translate2(-285, -85), vxo_mat_scale(0.8), neg_10))); 
+            vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_CENTER, vxo_chain(vxo_mat_translate2(-285, 0), vxo_mat_scale(0.8), zero))); 
+            vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_CENTER, vxo_chain(vxo_mat_translate2(-285, 85), vxo_mat_scale(0.8), pos_10))); 
+            vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_CENTER, vxo_chain(vxo_mat_translate2(-285, 170), vxo_mat_scale(0.8), pos_20))); 
+            vx_buffer_swap(buf);
         }
 
         static uint8_t to_grayscale(int8_t logOdds)
@@ -264,50 +282,10 @@ class state_t
             while (1) {
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->world,"pose_data");
-                if(state->collins_path.size()>1 && state->our_path.size()>1){
-                    int size = std::min(state->collins_path.size(),state->our_path.size());
-                    /*for(int i=0;i<size;++i){
-                        state->collins_display_path.push_back(state->collins_path[i]);
-                        state->our_display_path.push_back(state->our_path[i]);
-                    }
-                    state->collins_path.clear();
-                    state->our_path.clear();
-                    size = std::min(state->collins_display_path.size(),state->our_display_path.size());
-                    printf("%d %d\n",state->collins_path.size(),state->our_path.size());
-                    printf("%d %d\n",state->collins_display_path.size(),state->our_display_path.size());*/
-                    float coeff_0 = 0;
-                    float coeff_1 = 0;
-                    //float pts[size*3];
-                    for(int i=1;i<size;++i){
-                        /*maebot_pose_t collin_0 = state->collins_display_path[i-1];
-                        maebot_pose_t our_0 = state->our_display_path[i-1];
-                        maebot_pose_t collin_1 = state->collins_display_path[i];
-                        maebot_pose_t our_1 = state->our_display_path[i];*/
-                        maebot_pose_t collin_0 = state->collins_path[i-1];
-                        maebot_pose_t our_0 = state->our_path[i-1];
-                        maebot_pose_t collin_1 = state->collins_path[i];
-                        maebot_pose_t our_1 = state->our_path[i];
-
-                        if(collin_0.y > our_0.y){
-                            coeff_0 = -1;
-                        }
-                        else{
-                            coeff_0 = 1;
-                        }
-                        if(collin_1.y > our_1.y){
-                            coeff_1 = -1;
-                        }
-                        else{
-                            coeff_1 = 1;
-                        }
-                        float dy_0 = our_0.y - collin_0.y;
-                        float dx_0 = our_0.x - collin_0.x;
-                        float error_0 = coeff_0*sqrt(dx_0*dx_0+dy_0*dy_0);
-                        float dy_1 = our_1.y - collin_1.y;
-                        float dx_1 = our_1.x - collin_1.x;
-                        float error_1 = coeff_1*sqrt(dx_1*dx_1+dy_1*dy_1); 
-                        float pts[] = {(i-1)*0.3-45,error_0*20,0,
-                                        i*0.3-45   ,error_1*20,0};
+                if(state->error_path.size()>1){
+                    for(int i=1;i<state->error_path.size();++i){
+                        float pts[] = {(i-1)*0.3-60,state->error_path[i-1]*20,0,
+                            i*0.3-60   ,state->error_path[i]*20,0};
                         vx_resc_t *verts = vx_resc_copyf(pts,6);
                         vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_orange,2.0f)));
                     }
@@ -364,7 +342,7 @@ int main(int argc, char ** argv)
     state.appwrap = vx_gtk_display_source_create(&state.app);
     GtkWidget * window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     GtkWidget * canvas = vx_gtk_display_source_get_widget(state.appwrap);
-    gtk_window_set_default_size (GTK_WINDOW (window), 400, 400);
+    gtk_window_set_default_size (GTK_WINDOW (window), 600, 400);
     gtk_container_add(GTK_CONTAINER(window), canvas);
     gtk_widget_show (window);
     gtk_widget_show (canvas); // XXX Show all causes errors!

@@ -25,11 +25,9 @@
 #include "imagesource/image_util.h"
 #include "lcmtypes/maebot_motor_feedback_t.hpp"
 #include "lcmtypes/maebot_sensor_data_t.hpp"
-#include "lcm_handlers.hpp"
 #include "particle_data.hpp"
 #include "action_model.hpp"
 #include "pose_tracker.hpp"
-#include "laser_matcher.hpp"
 #include "path_planning.hpp"
 #include "mapping/occupancy_grid.hpp"
 #include "mapping/occupancy_grid_utils.hpp"
@@ -50,7 +48,6 @@ class state_t
         pthread_mutex_t data_mutex;
         pthread_mutex_t run_mutex;
 
-        laser_matcher matcher;
         particle_data particles;
         path_planning p_plan;
         //action_model action_error_model;
