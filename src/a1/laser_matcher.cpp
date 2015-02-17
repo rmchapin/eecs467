@@ -22,13 +22,6 @@ bool laser_matcher::push_pose(const maebot_pose_t *msg){
 }
 
 void laser_matcher::process(){
-    if(to_process_laser.empty()){
-        return;
-    }
-    if(poses.empty() || (poses.front().utime > to_process_laser.back().get_timestamp())){
-        to_process_laser.clear();
-        return;
-    }
     while(!to_process_laser.empty()){
         maebot_laser l = to_process_laser.front();
         //printf("%f %f\n",l.get_range(),l.get_theta());
