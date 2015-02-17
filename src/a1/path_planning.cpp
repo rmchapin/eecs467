@@ -20,7 +20,7 @@ std::vector<eecs467::Point<int>> path_planning::find_frontier(eecs467::Point<flo
     std::vector<breadth_point> isVisted(grid->widthInCells()*grid->heightInCells(),tmp);
     q.push_back(start);
     isVisted[convertTo1D(start)].visited = 1;
-    isVisted[convertTo1D(start)].prev_coord.x = -1;
+    isVisted[convertTo1D(start)].prev_coord.x = -1; //RMC -1,-1 is a valid grid cell
     isVisted[convertTo1D(start)].prev_coord.y = -1;
     while(!q.empty()){
         eecs467::Point<int> curr = q.front();
@@ -57,6 +57,8 @@ std::vector<eecs467::Point<int>> path_planning::find_frontier(eecs467::Point<flo
                 //printf("isVisted.size(): %d convertTo1D: %d\n",isVisted.size(),convertTo1D(new_point));
                 //printf("visited: %d\n",isVisted[convertTo1D(new_point)].visited);
                 //here to modify path qualification
+
+                //RMC - where does 8 come from?
                 if(grid->logOdds(new_point.x,new_point.y) <= 8 && isVisted[convertTo1D(new_point)].visited == 0){
                     q.push_back(new_point);
                     //printf("add: %d %d \n",new_point.x,new_point.y);
@@ -170,6 +172,6 @@ bool path_planning::check_gray_range(eecs467::Point<int> p,int range){
 }
 
 
-int path_planning::convertTo1D(eecs467::Point<int> p){
-    return p.y*grid->heightInCells()+p.x;
+inline int path_planning::convertTo1D(eecs467::Point<int> p){
+    return p.y*grid->widthInCells()+p.x;
 } 

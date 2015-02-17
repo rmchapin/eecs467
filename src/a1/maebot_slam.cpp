@@ -167,6 +167,10 @@ class state_t
                     if(frontier_path.empty()){
                         map_finished = true; 
                     }
+                    else
+                    {
+                        //DRIVE!!
+                    }
                     //printf("%d %d\n",frontier_path[0].x,frontier_path[0].y);
                     our_path.push_back(best);
                 } 

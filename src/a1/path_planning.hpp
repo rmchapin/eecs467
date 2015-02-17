@@ -21,7 +21,7 @@ public:
 
 private:
     eecs467::OccupancyGrid *grid;
-    int convertTo1D(eecs467::Point<int> p);
+    inline int convertTo1D(eecs467::Point<int> p);
     bool check_gray_range(eecs467::Point<int> p,int range);
 };
 
