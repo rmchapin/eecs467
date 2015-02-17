@@ -2,6 +2,9 @@
 #include <math.h>
 #include <math/point.hpp>
 
+static int OCCUPANCY_MAP_PATH_UPDATE = 8;
+static int OCCUPANCY_MAP_END_UPDATE = 30;
+
 occupancy_map::occupancy_map(float wInMeters, float hInMeters, float mPerCell, float s_rate){
     grid = eecs467::OccupancyGrid(wInMeters,hInMeters,mPerCell);
     sampling_rate = s_rate;
@@ -26,11 +29,11 @@ void occupancy_map::update(std::vector<maebot_laser> lasers){
             sample_cell = global_position_to_grid_cell(eecs467::Point<float>(sample_x,sample_y),grid);
             if(grid.isCellInGrid(sample_cell.x,sample_cell.y)){
                 int8_t odds = grid.logOdds(sample_cell.x,sample_cell.y); 
-                if(odds < (-128+10)){
+                if(odds < (-128+OCCUPANCY_MAP_PATH_UPDATE)){
                     grid.setLogOdds(sample_cell.x,sample_cell.y,-128);
                 }
                 else{
-                    odds -= 10;
+                    odds -= OCCUPANCY_MAP_PATH_UPDATE;
                     grid.setLogOdds(sample_cell.x,sample_cell.y,odds);
                 }
             } 
@@ -43,11 +46,11 @@ void occupancy_map::update(std::vector<maebot_laser> lasers){
         sample_cell = global_position_to_grid_cell(eecs467::Point<float>(sample_x,sample_y),grid);
         if(grid.isCellInGrid(sample_cell.x,sample_cell.y)){
             int8_t odds = grid.logOdds(sample_cell.x,sample_cell.y); 
-            if(odds > (127-20)){
+            if(odds > (127-OCCUPANCY_MAP_END_UPDATE)){
                 grid.setLogOdds(sample_cell.x,sample_cell.y,127);
             }
             else{
-                odds += 20;
+                odds += OCCUPANCY_MAP_END_UPDATE;
                 grid.setLogOdds(sample_cell.x,sample_cell.y,odds);
             }
         } 

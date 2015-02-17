@@ -1,82 +1,175 @@
 #include "path_planning.hpp"
 
 
-//based on grid index
-std::vector<eecs467::Point<int>> path_planning::search(eecs467::Point<int> start,eecs467::Point<int> end){
-    std::unordered_map<eecs467::Point<int>, eecs467::Point<int>> came_from;
-    std::unordered_map<eecs467::Point<int>, int> cost_so_far;
-    //std::priority_queue<a_star_point,a_star_point_comparator> frontier;
-    PriorityQueue<eecs467::Point<int>> frontier;
-    frontier.put(start,0);
-    came_from[start] = start;
-    cost_so_far[start] = 0;
-    while(!frontier.empty()){
-        auto current = frontier.get();
-        if(current == end){
-            break;
-        }
-        std::deque<eecs467::Point<int>> neighbor = get_neighbor(current);
-        for(auto next:neighbor){
-            int new_cost = cost_so_far[current] + get_cost(current,next);
-            if(!cost_so_far.count(next) || new_cost < cost_so_far[next]){
-                cost_so_far[next] = new_cost;
-                int priority = new_cost + heuristic_cost_estimation(next,goal);
-                frontier.put(next,priority);
-                came_from[next] = current;
-            }
-        }
-    }
-    return reconstruct_path(came_from,current,start);
-}
-
-std::vector<eecs467::Point<int>> path_planning::get_neighbor(eecs467::Point<int> p){
-    std::vector<eecs467::Point<int>> neighbor;
-    if(grid.isCellInGrid(p.x-1,p.y) && grid.logOdds(p.x-1,p.y)<0){
-        neighbor.push_back(eecs467::Point<int>(p.x-1,p.y));
-    }
-    if(grid.isCellInGrid(p.x+1,p.y) && grid.logOdds(p.x+1,p.y)<0){
-        neighbor.push_back(eecs467::Point<int>(p.x+1,p.y));
-    }
-    if(grid.isCellInGrid(p.x,p.y-1) && grid.logOdds(p.x,p.y-1)<0){
-        neighbor.push_back(eecs467::Point<int>(p.x,p.y-1));
-    }
-    if(grid.isCellInGrid(p.x,p.y+1) && grid.logOdds(p.x,p.y+1)<0){
-        neighbor.push_back(eecs467::Point<int>(p.x,p.y+1));
-    }
-}
-
-//distance is typically a heuristic cost estimation
-float path_planning::heuristic_cost_estimation(eecs467::Point<int> p1, eecs467::Point<int> p2){
-    return abs(p1.x-p2.x)+abs(p1.y-p2.y);
-}
-
-std::vector<eecs467::Point<int>> path_planning::reconstruct_path(std::unordered_map<eecs467::Point<int>,eecs467::Point<int>> &came_from,eecs467::Point<int> current,eecs467::Point<int> start){
-    std::vector<eecs467::Point<int>> path;
-    path.push_back(current);
-    while(current != start){
-        current = came_from[current];
-        path.push_back(current);
-    }    
-    return path;
-}
-eecs467::OccupancyGrid path_planning::get_grid(){
-    return grid;
-}
-
-void path_planning::updateGrid(eecs467::OccupancyGrid g){
+path_planning::path_planning(eecs467::OccupancyGrid *g){
     grid = g;
 }
 
-//this is the moving cost
-int path_planning::get_cost(eecs467::Point<int> p){
-    //shift the log Odds and times 0.5 to give a cost on position
-    int cost = (grid.logOdds(p.x,p.y)+128)/2;
-    if(grid.isCellInGrid(p.x,p.y)){
-        cost += 1;
-    }
-    else{
-        //give a large cost to prevent from moving to the out side
-        cost += 100;
-    }
-    return ;
+void path_planning::update_grid(eecs467::OccupancyGrid *g){
+    grid = g;
 }
+
+std::vector<eecs467::Point<int>> path_planning::find_frontier(eecs467::Point<float> best){
+    eecs467::Point<int> start = eecs467::global_position_to_grid_cell(best,*grid);
+    std::deque<eecs467::Point<int>> q;
+    std::vector<eecs467::Point<int>> path;
+    breadth_point tmp;
+    tmp.visited = 0;
+    tmp.prev_coord.x = -1;
+    tmp.prev_coord.y = -1;
+    std::vector<breadth_point> isVisted(grid->widthInCells()*grid->heightInCells(),tmp);
+    q.push_back(start);
+    isVisted[convertTo1D(start)].visited = 1;
+    isVisted[convertTo1D(start)].prev_coord.x = -1;
+    isVisted[convertTo1D(start)].prev_coord.y = -1;
+    while(!q.empty()){
+        eecs467::Point<int> curr = q.front();
+        q.pop_front();
+        //printf("front: %d %d\n",curr.x,curr.y);
+        //here to modify unexplore qualification
+        if(abs(grid->logOdds(curr.x,curr.y)) <= 8 && check_gray_range(curr,3)){
+            path.push_back(curr);
+            //printf("find result at: %d %d \n",curr.x,curr.y);
+            break;
+        }
+        for(int i =0; i<4 ; ++i){
+            int n=0;
+            int m=0;
+            switch (i){
+                case 0:
+                    n = -1;
+                    break;
+                case 1:
+                    m = 1;
+                    break;
+                case 2:
+                    n = 1;
+                    break;
+                case 3:
+                    m = -1;
+                    break;
+            }
+            eecs467::Point<int> new_point;
+            new_point.x = curr.x+n;
+            new_point.y = curr.y+m;
+            //printf("here\n");
+            if(grid->isCellInGrid(new_point.x,new_point.y)){
+                //printf("isVisted.size(): %d convertTo1D: %d\n",isVisted.size(),convertTo1D(new_point));
+                //printf("visited: %d\n",isVisted[convertTo1D(new_point)].visited);
+                //here to modify path qualification
+                if(grid->logOdds(new_point.x,new_point.y) <= 8 && isVisted[convertTo1D(new_point)].visited == 0){
+                    q.push_back(new_point);
+                    //printf("add: %d %d \n",new_point.x,new_point.y);
+                    isVisted[convertTo1D(new_point)].prev_coord = curr;
+                    isVisted[convertTo1D(new_point)].visited=1;
+                }
+            }
+        }
+    }
+    if(path.empty()){
+        return path;
+    }
+    //unwind
+    while(path.back() != start){
+        eecs467::Point<int> next = path.back();
+        path.push_back(isVisted[convertTo1D(next)].prev_coord);
+    }   
+    return path;
+}
+
+/* to slow
+bool path_planning::check_gray_range(eecs467::Point<int> p,int range){
+    //check the 10x10 area if there are enough gray to explore
+    int x_left = p.x-range;
+    if(x_left < 0){
+        return false;
+    }
+    int y_up = p.y-range;
+    if(y_up < 0){
+        return false;
+    }
+    int x_right = p.x+range;
+    if(x_right > grid->widthInCells()){
+        return false;
+    }
+    int y_down = p.y+range;
+    if(y_down > grid->heightInCells()){
+        return false;
+    }
+    //printf("runs here\n");
+    int total_size = (2*range+1)*(2*range+1);
+    int x_offset = -(p.x - range);
+    int y_offset = -(p.y - range);
+    std::vector<int> visited(total_size,0);
+    int gray_counter = 0;
+    std::deque<eecs467::Point<int>> q;
+    q.push_back(p);
+    visited[convertTo1D(eecs467::transform(p,x_offset,y_offset,0))] = 1;
+    while(!q.empty()){
+        eecs467::Point<int> curr = q.front();
+        q.pop_front();
+        if(abs(grid->logOdds(curr.x,curr.y)) <= 20){
+            ++gray_counter;
+            visited[convertTo1D(eecs467::transform(curr,x_offset,y_offset,0))] = 1;
+            for(int i =0; i<4 ; ++i){
+                int n=0;
+                int m=0;
+                switch (i){
+                    case 0:
+                        n = -1;
+                        break;
+                    case 1:
+                        m = 1;
+                        break;
+                    case 2:
+                        n = 1;
+                        break;
+                    case 3:
+                        m = -1;
+                        break;
+                }
+                eecs467::Point<int> new_point;
+                new_point.x = curr.x+n;
+                new_point.y = curr.y+m;
+                if(new_point.x >= x_left && 
+                        new_point.x <= x_right && 
+                        new_point.y >= y_up && 
+                        new_point.y <= y_down && 
+                        visited[convertTo1D(eecs467::transform(new_point,x_offset,y_offset,0))] == 0){
+                    q.push_back(new_point);       
+                }
+            }
+        }
+    }
+    if(gray_counter >= total_size/2){
+        return true;
+    }
+    return false;
+}
+*/
+
+bool path_planning::check_gray_range(eecs467::Point<int> p,int range){
+    int x = -range;
+    int y = -range;
+    int gray_counter = 0;
+    while(y <= range){
+        while(x <= range){
+            if(abs(grid->logOdds(p.x+x,p.y+y)) < 8){
+                ++gray_counter;
+            }
+            ++x;
+        }
+        x = -range;
+        ++y;
+    }
+    int total_size = (range*2+1)*(range*2+1);
+    if(gray_counter >= (total_size/3)){
+        return true;
+    }
+    return false;
+}
+
+
+int path_planning::convertTo1D(eecs467::Point<int> p){
+    return p.y*grid->heightInCells()+p.x;
+} 

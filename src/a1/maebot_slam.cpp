@@ -30,7 +30,7 @@
 #include "action_model.hpp"
 #include "pose_tracker.hpp"
 #include "laser_matcher.hpp"
-
+#include "path_planning.hpp"
 #include "mapping/occupancy_grid.hpp"
 #include "mapping/occupancy_grid_utils.hpp"
 #include <math/point.hpp>
@@ -52,13 +52,16 @@ class state_t
 
         laser_matcher matcher;
         particle_data particles;
+        path_planning p_plan;
         //action_model action_error_model;
         //pose_tracker bot_tracker;
 
         std::vector<maebot_pose_t> our_path;
         std::vector<maebot_pose_t> collins_path;
         std::vector<maebot_laser> curr_lasers;
+        std::vector<eecs467::Point<int>> frontier_path;
         bool first_scan;
+        bool map_finished;
         // vx stuff	
         vx_application_t app;
         vx_world_t * world;
@@ -81,7 +84,9 @@ class state_t
             //particles.has_map = true;
             map = occupancy_map(5.0,5.0,0.05,1.0);
             particles = particle_data(1500, temp, &map.grid);
+            p_plan = path_planning(&map.grid);
             first_scan = true;
+            map_finished = false;
             //GUI init stuff
             layers = zhash_create(sizeof(vx_display_t*),sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);
             app.impl= this;
@@ -140,22 +145,35 @@ class state_t
             pthread_mutex_lock(&data_mutex);
             //printf("start pushing\n");
             //bot_tracker.push_msg(*msg, action_error_model);
-            particles.push_odo(*msg);
+            if(!map_finished){
+                particles.push_odo(*msg);
+            }
             pthread_mutex_unlock(&data_mutex);
 
             pthread_mutex_lock(&data_mutex);
-            if(particles.ready()){
-                //printf("particle filter process\n");
-                maebot_pose_t old_best = particles.get_best();
-                particles.update();
-                //printf("best particle: %f %f\n",particles.get_best().x,particles.get_best().y);
-                maebot_pose_t best = particles.get_best();
-                //maebot_laser_scan_t scan_msg = particles.get_scan();
-                curr_lasers = particles.s_model.get_processed_laser_scan(particles.get_scan(),old_best,best);
-                map.update(curr_lasers);
-                particles.s_model.update_grid(&map.grid);
-                our_path.push_back(best);
-            } 
+            if(!map_finished){
+                if(particles.ready()){
+                    //printf("particle filter process\n");
+                    maebot_pose_t old_best = particles.get_best();
+                    particles.update();
+                    //printf("best particle: %f %f\n",particles.get_best().x,particles.get_best().y);
+                    maebot_pose_t best = particles.get_best();
+                    //maebot_laser_scan_t scan_msg = particles.get_scan();
+                    curr_lasers = particles.s_model.get_processed_laser_scan(particles.get_scan(),old_best,best);
+                    map.update(curr_lasers);
+                    particles.s_model.update_grid(&map.grid);
+                    p_plan.update_grid(&map.grid);
+                    eecs467::Point<float> best_point;
+                    best_point.x = best.x;
+                    best_point.y = best.y;
+                    frontier_path = p_plan.find_frontier(best_point);
+                    if(frontier_path.empty()){
+                        map_finished = true; 
+                    }
+                    //printf("%d %d\n",frontier_path[0].x,frontier_path[0].y);
+                    our_path.push_back(best);
+                } 
+            }
             pthread_mutex_unlock(&data_mutex);
         }
 
@@ -163,38 +181,41 @@ class state_t
         {
             pthread_mutex_lock(&data_mutex);
             //printf("laser handle\n");
-            if(particles.processing == false){
-                if(first_scan){
-                    //printf("first scan");
-                    for(int i=0;i<msg->num_ranges;++i){
-                        maebot_laser l = maebot_laser(msg->times[i],
-                                            msg->ranges[i],
-                                            -1.0*msg->thetas[i],
-                                            msg->intensities[i],
-                                            0,
-                                            0);
-                        //printf("%f %f\n",msg->ranges[i],msg->thetas[i]);
-                        curr_lasers.push_back(l);
+            if(!map_finished){
+                if(particles.processing == false){
+                    if(first_scan){
+                        //printf("first scan");
+                        for(int i=0;i<msg->num_ranges;++i){
+                            maebot_laser l = maebot_laser(msg->times[i],
+                                    msg->ranges[i],
+                                    -1.0*msg->thetas[i],
+                                    msg->intensities[i],
+                                    0,
+                                    0);
+                            //printf("%f %f\n",msg->ranges[i],msg->thetas[i]);
+                            curr_lasers.push_back(l);
+                        }
+                        first_scan = false;
+                        map.update(curr_lasers);
+                        //save_map(this);
+                        particles.s_model.update_grid(&map.grid);
                     }
-                    first_scan = false;
-                    map.update(curr_lasers);
-                    particles.s_model.update_grid(&map.grid);
-                }
-                else{
-                    //printf("later scan\n");
-                    particles.push_scan(*msg);
-                    /*matcher.push_laser(msg);
-                    matcher.process();
-                    curr_lasers = matcher.get_processed_laser();
-                    if(curr_lasers.empty()){
-                        pthread_mutex_unlock(&data_mutex);
-                        return;
-                    }*/
-                }
-                /*map.update(curr_lasers);
-                particles.has_map = true;
-                particles.s_model.update_grid(&map.grid);*/
+                    else{
+                        //printf("later scan\n");
+                        particles.push_scan(*msg);
+                        /*matcher.push_laser(msg);
+                          matcher.process();
+                          curr_lasers = matcher.get_processed_laser();
+                          if(curr_lasers.empty()){
+                          pthread_mutex_unlock(&data_mutex);
+                          return;
+                          }*/
+                    }
+                    /*map.update(curr_lasers);
+                      particles.has_map = true;
+                      particles.s_model.update_grid(&map.grid);*/
 
+                }
             } 
             pthread_mutex_unlock(&data_mutex);
         }
@@ -244,7 +265,7 @@ class state_t
         static void save_map(state_t *state)
         {
             FILE *fp;
-            fp = fopen("empty_map.txt","w");
+            fp = fopen("test_map.txt","w");
             eecs467::OccupancyGrid& grid = state->map.get_grid();
             fprintf(fp,"%d\n",grid.heightInCells());
             fprintf(fp,"%d\n",grid.widthInCells());
@@ -320,6 +341,18 @@ class state_t
                   vx_object_t *data_size = vxo_text_create(VXO_TEXT_ANCHOR_CENTER, buffer);
                   vx_buffer_add_back(buf, vxo_pix_coords(VX_ORIGIN_BOTTOM_RIGHT, vxo_chain(vxo_mat_translate2(-70, 8), vxo_mat_scale(0.8), data_size)));
                   */
+                if(state->frontier_path.size() > 1){
+                    for(int i = 1; i < state->frontier_path.size();++i){
+                        eecs467::Point<float> x0 = eecs467::grid_position_to_global_position(state->frontier_path[i],state->map.grid);
+                        eecs467::Point<float> x1 = eecs467::grid_position_to_global_position(state->frontier_path[i-1],state->map.grid);
+                        float pts[] = {x0.x*15,x0.y*15,0.0,
+                            x1.x*15,x1.y*15,0.0};
+                        //float pts[] = {0*15,0*15,0,15,15,0};
+                        vx_resc_t *verts = vx_resc_copyf(pts,6);
+                        vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_orange,2.0f)));
+                    }
+
+                }
                 if(state->particles.get_size() > 1){
                     float* pts = state->particles.get_particle_coords();
                     int npoints = state->particles.get_size();
