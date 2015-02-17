@@ -20,11 +20,11 @@
 
 #include "common/getopt.h"
 #include "common/timestamp.h"
-#include "common/timestamp.h"
 #include "imagesource/image_u32.h"
 #include "imagesource/image_util.h"
 #include "lcmtypes/maebot_motor_feedback_t.hpp"
 #include "lcmtypes/maebot_sensor_data_t.hpp"
+#include "lcmtypes/maebot_motor_command_t.hpp"
 #include "particle_data.hpp"
 #include "action_model.hpp"
 #include "pose_tracker.hpp"
@@ -36,6 +36,7 @@
 #include <math/gsl_util_rand.h>
 
 #define MAX_DRIVE_CMD 0.3
+#define _USE_MATH_DEFINES
 
 static const char* MAP_TO_READ = "figure_eight.txt";
 
@@ -176,43 +177,43 @@ class state_t
                         //DRIVE!!
                         maebot_motor_command_t drive_cmd;
 
-                        float drive_dx = path.back().x + .025 - best_point.x;
-                        float drive_dy = path.back().y + .025 - best_point.y;
+                        float drive_dx = frontier_path.back().x + .025 - best.x;
+                        float drive_dy = frontier_path.back().y + .025 - best.y;
 
                         float drive_adjust = 0.0;
                         if (drive_dx > 0)
                         {
-                            drive_adjust = 1.5 * math.pi();
+                            drive_adjust = 1.5 * M_PI; //add 270deg right of y axis
                         }
                         else
                         {
-                            drive_adjust = 0.5 * math.pi();
+                            drive_adjust = 0.5 * M_PI; //add 90deg left of y axis
                         }
 
                         float theta_tar = atan(drive_dy/drive_dx) + drive_adjust;
-                        float theta_c = theta_tar - best_point.theta;
+                        float theta_c = theta_tar - best.theta;
 
-                        if (abs(theta_c) <= (math.pi()/6))
+                        if (abs(theta_c) <= (M_PI/6.0))
                         {//within 30deg of our heading
                             drive_cmd.motor_left_speed = MAX_DRIVE_CMD;
                             drive_cmd.motor_right_speed = MAX_DRIVE_CMD;
                         }
-                        else if (theta_c > (math.pi()/6) && theta_c < (math.pi()/2))
+                        else if (theta_c > (M_PI/6.0) && theta_c < (M_PI/2.0))
                         {//30-90deg left of our heading
-                            drive_cmd.motor_left_speed = (theta_c/(math.pi()/2)) * MAX_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = (theta_c/(M_PI/2.0)) * MAX_DRIVE_CMD;
                             drive_cmd.motor_right_speed = MAX_DRIVE_CMD - drive_cmd.motor_left_speed;
                         }
-                        else if (theta_c < (-math.pi()/6) && theta_c > (-math.pi()/2))
+                        else if (theta_c < (-M_PI/6.0) && theta_c > (-M_PI/2.0))
                         {//30-90deg right of our heading
-                            drive_cmd.motor_right_speed = (theta_c/(-math.pi()/2)) * MAX_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = (theta_c/(-M_PI/2.0)) * MAX_DRIVE_CMD;
                             drive_cmd.motor_left_speed = MAX_DRIVE_CMD - drive_cmd.motor_right_speed;
                         }
-                        else if (theta_c > (math.pi()/2))
+                        else if (theta_c > (M_PI/2.0))
                         {//90-180deg left of our heading
                             drive_cmd.motor_left_speed = -MAX_DRIVE_CMD;
                             drive_cmd.motor_right_speed = MAX_DRIVE_CMD;
                         }
-                        else if (theta_c < (-math.pi()/2))
+                        else if (theta_c < (-M_PI/2.0))
                         {//90-180deg right of our heading
                             drive_cmd.motor_left_speed = MAX_DRIVE_CMD;
                             drive_cmd.motor_left_speed = -MAX_DRIVE_CMD;
