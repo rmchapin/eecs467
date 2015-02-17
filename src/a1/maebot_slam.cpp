@@ -35,6 +35,8 @@
 #include "occupancy_map.hpp"
 #include <math/gsl_util_rand.h>
 
+#define MAX_DRIVE_CMD 0.3
+
 static const char* MAP_TO_READ = "figure_eight.txt";
 
 class state_t
@@ -169,7 +171,54 @@ class state_t
                     }
                     else
                     {
+                        //if best particle is in cell on back of path, pop
+
                         //DRIVE!!
+                        maebot_motor_command_t drive_cmd;
+
+                        float drive_dx = path.back().x + .025 - best_point.x;
+                        float drive_dy = path.back().y + .025 - best_point.y;
+
+                        float drive_adjust = 0.0;
+                        if (drive_dx > 0)
+                        {
+                            drive_adjust = 1.5 * math.pi();
+                        }
+                        else
+                        {
+                            drive_adjust = 0.5 * math.pi();
+                        }
+
+                        float theta_tar = atan(drive_dy/drive_dx) + drive_adjust;
+                        float theta_c = theta_tar - best_point.theta;
+
+                        if (abs(theta_c) <= (math.pi()/6))
+                        {//within 30deg of our heading
+                            drive_cmd.motor_left_speed = MAX_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = MAX_DRIVE_CMD;
+                        }
+                        else if (theta_c > (math.pi()/6) && theta_c < (math.pi()/2))
+                        {//30-90deg left of our heading
+                            drive_cmd.motor_left_speed = (theta_c/(math.pi()/2)) * MAX_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = MAX_DRIVE_CMD - drive_cmd.motor_left_speed;
+                        }
+                        else if (theta_c < (-math.pi()/6) && theta_c > (-math.pi()/2))
+                        {//30-90deg right of our heading
+                            drive_cmd.motor_right_speed = (theta_c/(-math.pi()/2)) * MAX_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = MAX_DRIVE_CMD - drive_cmd.motor_right_speed;
+                        }
+                        else if (theta_c > (math.pi()/2))
+                        {//90-180deg left of our heading
+                            drive_cmd.motor_left_speed = -MAX_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = MAX_DRIVE_CMD;
+                        }
+                        else if (theta_c < (-math.pi()/2))
+                        {//90-180deg right of our heading
+                            drive_cmd.motor_left_speed = MAX_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = -MAX_DRIVE_CMD;
+                        }
+
+                        //publish drive_cmd
                     }
                     //printf("%d %d\n",frontier_path[0].x,frontier_path[0].y);
                     our_path.push_back(best);
