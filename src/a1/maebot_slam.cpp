@@ -36,6 +36,10 @@
 #include <math/gsl_util_rand.h>
 
 #define MAX_DRIVE_CMD 0.3
+#define NEG_90d (-M_PI/2.0)
+#define POS_90d (M_PI/2.0)
+#define POS_30d (M_PI/6.0)
+#define NEG_30d (-M_PI/6.0)
 #define _USE_MATH_DEFINES
 
 static const char* MAP_TO_READ = "figure_eight.txt";
@@ -158,6 +162,7 @@ class state_t
                     particles.update();
                     //printf("best particle: %f %f\n",particles.get_best().x,particles.get_best().y);
                     maebot_pose_t best = particles.get_best();
+                    our_path.push_back(best);
                     //maebot_laser_scan_t scan_msg = particles.get_scan();
                     curr_lasers = particles.s_model.get_processed_laser_scan(particles.get_scan(),old_best,best);
                     map.update(curr_lasers);
@@ -167,15 +172,17 @@ class state_t
                     best_point.x = best.x;
                     best_point.y = best.y;
                     frontier_path = p_plan.find_frontier(best_point);
-                    if(frontier_path.empty()){
+
+                    if(frontier_path.size() <= 1){
                         map_finished = true; 
                     }
                     else
                     {
                         //if best particle is in cell on back of path, pop
-
-                        //DRIVE!!
-                        maebot_motor_command_t drive_cmd;
+                        if (global_position_to_grid_cell(best_point, map.grid) == frontier_path.back())
+                        {
+                            frontier_path.pop_back();
+                        }
 
                         float drive_dx = frontier_path.back().x + .025 - best.x;
                         float drive_dy = frontier_path.back().y + .025 - best.y;
@@ -193,36 +200,37 @@ class state_t
                         float theta_tar = atan(drive_dy/drive_dx) + drive_adjust;
                         float theta_c = theta_tar - best.theta;
 
-                        if (abs(theta_c) <= (M_PI/6.0))
+                        maebot_motor_command_t drive_cmd;
+                        if (abs(theta_c) <= (POS_30d))
                         {//within 30deg of our heading
                             drive_cmd.motor_left_speed = MAX_DRIVE_CMD;
                             drive_cmd.motor_right_speed = MAX_DRIVE_CMD;
                         }
-                        else if (theta_c > (M_PI/6.0) && theta_c < (M_PI/2.0))
+                        else if (theta_c > POS_30d && theta_c < POS_90d)
                         {//30-90deg left of our heading
-                            drive_cmd.motor_left_speed = (theta_c/(M_PI/2.0)) * MAX_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = MAX_DRIVE_CMD - drive_cmd.motor_left_speed;
+                            drive_cmd.motor_left_speed = (POS_90d - theta_c)/(POS_90d) * MAX_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = MAX_DRIVE_CMD;
                         }
-                        else if (theta_c < (-M_PI/6.0) && theta_c > (-M_PI/2.0))
+                        else if (theta_c < NEG_30d && theta_c > NEG_90d)
                         {//30-90deg right of our heading
-                            drive_cmd.motor_right_speed = (theta_c/(-M_PI/2.0)) * MAX_DRIVE_CMD;
-                            drive_cmd.motor_left_speed = MAX_DRIVE_CMD - drive_cmd.motor_right_speed;
+                            drive_cmd.motor_right_speed = ((NEG_90d)-theta_c)/(NEG_90d) * MAX_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = MAX_DRIVE_CMD;
                         }
-                        else if (theta_c > (M_PI/2.0))
+                        else if (theta_c > POS_90d)
                         {//90-180deg left of our heading
                             drive_cmd.motor_left_speed = -MAX_DRIVE_CMD;
                             drive_cmd.motor_right_speed = MAX_DRIVE_CMD;
                         }
-                        else if (theta_c < (-M_PI/2.0))
+                        else if (theta_c < NEG_90d)
                         {//90-180deg right of our heading
                             drive_cmd.motor_left_speed = MAX_DRIVE_CMD;
-                            drive_cmd.motor_left_speed = -MAX_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = -MAX_DRIVE_CMD;
                         }
 
                         //publish drive_cmd
+                        lcm.publish("MAEBOT_MOTOR_COMMAND", &drive_cmd);
                     }
                     //printf("%d %d\n",frontier_path[0].x,frontier_path[0].y);
-                    our_path.push_back(best);
                 } 
             }
             pthread_mutex_unlock(&data_mutex);
