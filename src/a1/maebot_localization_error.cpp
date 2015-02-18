@@ -285,7 +285,7 @@ class state_t
                 if(state->error_path.size()>1){
                     for(int i=1;i<state->error_path.size();++i){
                         float pts[] = {(i-1)*0.3-60,state->error_path[i-1]*20,0,
-                            i*0.3-60   ,state->error_path[i]*20,0};
+                            		i*0.3-60   ,state->error_path[i]*20,0};
                         vx_resc_t *verts = vx_resc_copyf(pts,6);
                         vx_buffer_add_back(buf,vxo_lines(verts,2,GL_LINES,vxo_lines_style(vx_orange,2.0f)));
                     }

@@ -88,8 +88,7 @@ class state_t
 
             //read_map();
             //particles.has_map = true;
-            map = occupancy_map
-(5.0,5.0,0.05,1.0);
+            map = occupancy_map(5.0,5.0,0.05,1.0);
             particles = particle_data(1500, temp, &map.grid);
             p_plan = path_planning(&map.grid);
             first_scan = true;
@@ -104,7 +103,6 @@ class state_t
             gslu_rand_seed(); 
             //action_error_model = action_model();
             //bot_tracker = pose_tracker();
-
 
             if (pthread_mutex_init(&run_mutex, NULL)) {
                 printf("run mutex init failed\n");
@@ -251,14 +249,14 @@ printf("right\n");
                         else if (theta_c > POS_90d && theta_c < M_PI)
                         {//90-180deg left of our heading
 printf("hard left\n");
-                            drive_cmd.motor_left_speed = 0.8*-L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = 0.8*R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 0.5*-L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = 0.5*R_DRIVE_CMD;
                         }
                         else if (theta_c > M_PI && theta_c < ((2.0*M_PI)-POS_90d))
                         {//90-180deg right of our heading
 printf("hard right\n");
-                            drive_cmd.motor_left_speed = 0.8*L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = 0.8*-R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 0.5*L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = 0.5*-R_DRIVE_CMD;
                         }
 
                         //publish drive_cmd
