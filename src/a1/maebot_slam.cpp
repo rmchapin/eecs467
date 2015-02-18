@@ -265,33 +265,33 @@ if (theta_c < 0.0)
                         if (theta_c < POS_30d || theta_c > ((2.0*M_PI)-POS_30d))
                         {//within 30deg of our heading
 printf("straight\n");
-                            drive_cmd.motor_left_speed = L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 1.3*L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = 1.3*R_DRIVE_CMD;
                         }
                         else if (theta_c > POS_30d && theta_c < POS_90d)
                         {//30-90deg left of our heading
 printf("left\n");
-                            drive_cmd.motor_left_speed = 0.4*L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = (1 + (theta_c/M_PI))*R_DRIVE_CMD*0.65;
+                            drive_cmd.motor_left_speed = 0.42*L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = (1 + (theta_c/M_PI))*R_DRIVE_CMD*0.6;
                         }
                         else if (theta_c < ((2.0*M_PI)-POS_30d) && theta_c > ((2.0*M_PI)-POS_90d))
                         {//30-90deg right of our heading
 printf("right\n");
-							drive_cmd.motor_left_speed = (3-theta_c/M_PI)*L_DRIVE_CMD*0.65;                            
-							drive_cmd.motor_right_speed = 0.4*R_DRIVE_CMD;
+							drive_cmd.motor_left_speed = (3-theta_c/M_PI)*L_DRIVE_CMD*0.6;                            
+							drive_cmd.motor_right_speed = 0.42*R_DRIVE_CMD;
                             
                         }
                         else if (theta_c > POS_90d && theta_c < M_PI)
                         {//90-180deg left of our heading
 printf("hard left\n");
-                            drive_cmd.motor_left_speed = 0.8*-L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = 0.8*R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 0.7*-L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = 0.7*R_DRIVE_CMD;
                         }
                         else if (theta_c > M_PI && theta_c < ((2.0*M_PI)-POS_90d))
                         {//90-180deg right of our heading
 printf("hard right\n");
-                            drive_cmd.motor_left_speed = 0.8*L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = 0.8*-R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 0.7*L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = 0.7*-R_DRIVE_CMD;
                         }
 
                         //publish drive_cmd

@@ -37,7 +37,7 @@
 #include <math/angle_functions.hpp>
 
 #define L_DRIVE_CMD 0.24
-#define R_DRIVE_CMD 0.20
+#define R_DRIVE_CMD 0.24
 #define NEG_90d (-M_PI/2.0)
 #define POS_90d (M_PI/2.0)
 #define POS_30d (M_PI/6.0)
@@ -68,6 +68,7 @@ class state_t
         std::vector<eecs467::Point<int>> frontier_path;
         bool first_scan;
         bool map_finished;
+        bool last_draw;  
         // vx stuff	
         vx_application_t app;
         vx_world_t * world;
@@ -76,6 +77,9 @@ class state_t
         pthread_mutex_t mutex; // for accessing the arrays
         pthread_t animate_thread;
         image_u8_t *image_buf;
+
+		int wall_expansion;
+		int finished_draw_count;
 
     public:
         state_t()
@@ -93,6 +97,7 @@ class state_t
             p_plan = path_planning(&map.grid);
             first_scan = true;
             map_finished = false;
+	    last_draw = true;
             //GUI init stuff
             layers = zhash_create(sizeof(vx_display_t*),sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);
             app.impl= this;
@@ -103,6 +108,9 @@ class state_t
             gslu_rand_seed(); 
             //action_error_model = action_model();
             //bot_tracker = pose_tracker();
+
+			wall_expansion = 4;
+			finished_draw_count = 20;
 
             if (pthread_mutex_init(&run_mutex, NULL)) {
                 printf("run mutex init failed\n");
@@ -157,7 +165,18 @@ class state_t
             pthread_mutex_unlock(&data_mutex);
 
             pthread_mutex_lock(&data_mutex);
-            if(!map_finished){
+			
+			if (map_finished && !last_draw && finished_draw_count > 0)
+			{
+					maebot_pose_t best = particles.get_best();
+					curr_lasers = particles.s_model.get_processed_laser_scan(particles.get_scan(),best,best);
+                    map.update(curr_lasers);
+                    particles.s_model.update_grid(&map.grid);
+					finished_draw_count--;
+			}            
+
+
+			if(!map_finished){
                 if(particles.ready()){
                     //printf("particle filter process\n");
                     maebot_pose_t old_best = particles.get_best();
@@ -170,18 +189,32 @@ class state_t
                     curr_lasers = particles.s_model.get_processed_laser_scan(particles.get_scan(),old_best,best);
                     map.update(curr_lasers);
                     particles.s_model.update_grid(&map.grid);
-                    p_plan.update_grid(&map.grid);
+
                     eecs467::Point<float> best_point;
                     best_point.x = best.x;
                     best_point.y = best.y;
-                    frontier_path = p_plan.find_frontier(best_point);
+                    
+					wall_expansion = 4;
+					while (wall_expansion >= 1)
+					{
+						printf("attempt with walls + %d\n", wall_expansion);
+                    	p_plan.update_grid(&map.grid, wall_expansion);					
+						frontier_path = p_plan.find_frontier(best_point);
+						if (frontier_path.size() > 2)
+						{
+							break;
+						}
+						else
+						{
+							frontier_path.clear();
+							wall_expansion--;
+						}
+					}
 
-//for (int i=0; i < 5; i++)
-//{
-//	printf("path_%d: %d, %d\n", i, frontier_path[frontier_path.size()-i-1].x, frontier_path[frontier_path.size()-i-1].y);
-//}
-                    if(frontier_path.size() <= 2){
-                        map_finished = true; 
+                    if(wall_expansion == 0){
+						//wall_expansion--;
+						//printf("WALL_EXPANSION IS NOW: %d\n", wall_expansion);                     
+						map_finished = true;
                     }
                     else
                     {
@@ -190,6 +223,8 @@ class state_t
                         {
                             frontier_path.pop_back();
 							frontier_path.pop_back();
+							//frontier_path.pop_back();
+							//frontier_path.pop_back();
                         }
 
 						eecs467::Point<float> target_f = grid_position_to_global_position(frontier_path.back(), map.grid);
@@ -230,33 +265,33 @@ if (theta_c < 0.0)
                         if (theta_c < POS_30d || theta_c > ((2.0*M_PI)-POS_30d))
                         {//within 30deg of our heading
 printf("straight\n");
-                            drive_cmd.motor_left_speed = L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 1.3*L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = 1.3*R_DRIVE_CMD;
                         }
                         else if (theta_c > POS_30d && theta_c < POS_90d)
                         {//30-90deg left of our heading
 printf("left\n");
-                            drive_cmd.motor_left_speed = 0.8*L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = (1 + (theta_c/M_PI))*R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 0.42*L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = (1 + (theta_c/M_PI))*R_DRIVE_CMD*0.62;
                         }
                         else if (theta_c < ((2.0*M_PI)-POS_30d) && theta_c > ((2.0*M_PI)-POS_90d))
                         {//30-90deg right of our heading
 printf("right\n");
-							drive_cmd.motor_left_speed = (3-theta_c/M_PI)*L_DRIVE_CMD;                            
-							drive_cmd.motor_right_speed = 0.8*R_DRIVE_CMD;
+							drive_cmd.motor_left_speed = (3-theta_c/M_PI)*L_DRIVE_CMD*0.62;                            
+							drive_cmd.motor_right_speed = 0.42*R_DRIVE_CMD;
                             
                         }
                         else if (theta_c > POS_90d && theta_c < M_PI)
                         {//90-180deg left of our heading
 printf("hard left\n");
-                            drive_cmd.motor_left_speed = 0.5*-L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = 0.5*R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 0.7*-L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = 0.7*R_DRIVE_CMD;
                         }
                         else if (theta_c > M_PI && theta_c < ((2.0*M_PI)-POS_90d))
                         {//90-180deg right of our heading
 printf("hard right\n");
-                            drive_cmd.motor_left_speed = 0.5*L_DRIVE_CMD;
-                            drive_cmd.motor_right_speed = 0.5*-R_DRIVE_CMD;
+                            drive_cmd.motor_left_speed = 0.7*L_DRIVE_CMD;
+                            drive_cmd.motor_right_speed = 0.7*-R_DRIVE_CMD;
                         }
 
                         //publish drive_cmd
@@ -267,6 +302,20 @@ printf("motor_cmd (l,r): (%f,%f)\n", drive_cmd.motor_left_speed, drive_cmd.motor
                     //printf("%d %d\n",frontier_path[0].x,frontier_path[0].y);
                 } 
             }
+	    else{
+	      if(last_draw){
+					printf("DONE\n");
+                    //printf("particle filter process\n");
+                    //printf("best particle: %f %f\n",particles.get_best().x,particles.get_best().y);
+                    maebot_pose_t best = particles.get_best();
+                    //our_path.push_back(best);
+//printf("position: %f, %f\n", best.x, best.y);
+                    //maebot_laser_scan_t scan_msg = particles.get_scan();
+                    curr_lasers = particles.s_model.get_processed_laser_scan(particles.get_scan(),best,best);
+                    map.update(curr_lasers);
+		    last_draw = false;
+	      }
+	    }
             pthread_mutex_unlock(&data_mutex);
         }
 
@@ -343,6 +392,7 @@ printf("motor_cmd (l,r): (%f,%f)\n", drive_cmd.motor_left_speed, drive_cmd.motor
         static void render_grid(state_t * state)
         {
             eecs467::OccupancyGrid& grid = state->map.get_grid();
+			//eecs467::OccupancyGrid& grid = state->p_plan.grid;
             if(state->image_buf == nullptr){
                 state->image_buf = image_u8_create(grid.widthInCells(),grid.heightInCells());
             }
