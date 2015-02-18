@@ -20,9 +20,10 @@ public:
     std::vector<eecs467::Point<int>> find_frontier(eecs467::Point<float> best);
 
 private:
-    eecs467::OccupancyGrid *grid;
+    eecs467::OccupancyGrid grid;
     inline int convertTo1D(eecs467::Point<int> p);
     bool check_gray_range(eecs467::Point<int> p,int range);
+    void enlarge_obstacle();
 };
 
 
