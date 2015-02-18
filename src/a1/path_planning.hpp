@@ -16,14 +16,13 @@ class path_planning{
 public:
     path_planning(){}
     path_planning(eecs467::OccupancyGrid *g);
-    void update_grid(eecs467::OccupancyGrid *g);
+    void update_grid(eecs467::OccupancyGrid *g, int wall_expansion);
     std::vector<eecs467::Point<int>> find_frontier(eecs467::Point<float> best);
-
+	eecs467::OccupancyGrid grid;
 private:
-    eecs467::OccupancyGrid grid;
     inline int convertTo1D(eecs467::Point<int> p);
     bool check_gray_range(eecs467::Point<int> p,int range);
-    void enlarge_obstacle();
+    void enlarge_obstacle(int wall_expansion);
 };
 
 

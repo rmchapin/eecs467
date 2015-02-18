@@ -3,28 +3,44 @@
 
 path_planning::path_planning(eecs467::OccupancyGrid *g){
     grid = *g;
-    enlarge_obstacle();
+    //enlarge_obstacle();
 }
 
-void path_planning::update_grid(eecs467::OccupancyGrid *g){
-    grid = *g;
-    enlarge_obstacle();
+void path_planning::update_grid(eecs467::OccupancyGrid *g, int wall_expansion){
+    //grid = eecs467::OccupancyGrid(g->widthInMeters(),g->heightInMeters(),g->metersPerCell());
+	grid = *g;
+	enlarge_obstacle(wall_expansion);	
+	/*for(int y=0;y<g->widthInCells();++y){
+        for(int x=0;x<g->heightInCells();++x){
+			uint8_t odds = g->logOdds(x,y);       
+			grid.setLogOdds(x,y,odds);
+            if(odds > 8){
+                grid.setLogOdds(x-1,y,127);
+                grid.setLogOdds(x+1,y,127);
+                grid.setLogOdds(x,y-1,127);
+                grid.setLogOdds(x,y+1,127);
+                //tmp.setLogOdds(x-1,y-1,127);
+                //tmp.setLogOdds(x+1,y+1,127);
+                //tmp.setLogOdds(x-1,y+1,127);
+                //tmp.setLogOdds(x+1,y-1,127);
+            } 
+        }
+    }*/
 }
 
-void path_planning::enlarge_obstacle(){
+void path_planning::enlarge_obstacle(int wall_expansion){
     eecs467::OccupancyGrid tmp(grid.widthInMeters(),grid.heightInMeters(),grid.metersPerCell());
     for(int y=0;y<grid.widthInCells();++y){
         for(int x=0;x<grid.heightInCells();++x){
             tmp.setLogOdds(x,y,grid.logOdds(x,y));
-            if(grid.logOdds(x,y) > 10){
-                tmp.setLogOdds(x-1,y,grid.logOdds(x,y));
-                tmp.setLogOdds(x+1,y,grid.logOdds(x,y));
-                tmp.setLogOdds(x,y-1,grid.logOdds(x,y));
-                tmp.setLogOdds(x,y+1,grid.logOdds(x,y));
-                tmp.setLogOdds(x-1,y-1,grid.logOdds(x,y));
-                tmp.setLogOdds(x+1,y+1,grid.logOdds(x,y));
-                tmp.setLogOdds(x-1,y+1,grid.logOdds(x,y));
-                tmp.setLogOdds(x+1,y-1,grid.logOdds(x,y));
+            if(grid.logOdds(x,y) > 8){
+				for (int p=-wall_expansion; p <= wall_expansion; p++)
+				{
+					for (int k=-wall_expansion; k<=wall_expansion; k++)
+					{					
+						tmp.setLogOdds(x+k, y+p, 127);
+					}
+				}			
             } 
         }
     }
@@ -58,7 +74,7 @@ std::vector<eecs467::Point<int>> path_planning::find_frontier(eecs467::Point<flo
             //printf("find result at: %d %d \n",curr.x,curr.y);
             break;
         }
-        for(int i =0; i<4 ; ++i){
+        for(int i =0; i<8 ; ++i){
             int n=0;
             int m=0;
             switch (i){
@@ -74,6 +90,22 @@ std::vector<eecs467::Point<int>> path_planning::find_frontier(eecs467::Point<flo
                 case 3:
                     m = -1;
                     break;
+				case 4:
+					n = -1;
+					m = 1;
+					break;
+				case 5:
+					n = -1;
+					m = -1;
+					break;
+				case 6:
+					n = 1;
+					m = 1;
+					break;
+				case 7:
+					n = 1;
+					m = -1;
+					break;
             }
             eecs467::Point<int> new_point;
             new_point.x = curr.x+n;
@@ -85,7 +117,7 @@ std::vector<eecs467::Point<int>> path_planning::find_frontier(eecs467::Point<flo
                 //here to modify path qualification
 
                 //RMC - where does 8 come from?
-                if(grid.logOdds(new_point.x,new_point.y) <= 8 && isVisted[convertTo1D(new_point)].visited == 0){
+                if(grid.logOdds(new_point.x,new_point.y) <= 3 && isVisted[convertTo1D(new_point)].visited == 0){
                     q.push_back(new_point);
                     //printf("add: %d %d \n",new_point.x,new_point.y);
                     isVisted[convertTo1D(new_point)].prev_coord = curr;
@@ -191,7 +223,7 @@ bool path_planning::check_gray_range(eecs467::Point<int> p,int range){
         ++y;
     }
     int total_size = (range*2+1)*(range*2+1);
-    if(gray_counter >= (total_size/3)){
+    if(gray_counter >= (total_size/3)-2){
         return true;
     }
     return false;

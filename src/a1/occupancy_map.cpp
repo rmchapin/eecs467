@@ -2,8 +2,8 @@
 #include <math.h>
 #include <math/point.hpp>
 
-static int OCCUPANCY_MAP_PATH_UPDATE = 8;
-static int OCCUPANCY_MAP_END_UPDATE = 30;
+static int OCCUPANCY_MAP_PATH_UPDATE = 4;
+static int OCCUPANCY_MAP_END_UPDATE = 20;
 
 occupancy_map::occupancy_map(float wInMeters, float hInMeters, float mPerCell, float s_rate){
     grid = eecs467::OccupancyGrid(wInMeters,hInMeters,mPerCell);
