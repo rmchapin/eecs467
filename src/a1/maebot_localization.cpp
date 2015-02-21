@@ -54,6 +54,7 @@ class state_t
 
         std::vector<maebot_pose_t> our_path;
         std::vector<maebot_pose_t> collins_path;
+        maebot_pose_t curr_collin_pose;
         //std::deque<maebot_laser> curr_lasers;
         //bool first_scan;
         // vx stuff	
@@ -64,6 +65,10 @@ class state_t
         pthread_mutex_t mutex; // for accessing the arrays
         pthread_t animate_thread;
         image_u8_t *image_buf;
+        FILE *pose_fp;
+        FILE *odo_fp;
+        FILE *error_fp;
+
 
     public:
         state_t()
@@ -104,6 +109,10 @@ class state_t
             lcm.subscribe("MAEBOT_POSE", &state_t::pose_handler, this);
             lcm.subscribe("MAEBOT_MOTOR_FEEDBACK", &state_t::odo_handler, this);
             lcm.subscribe("MAEBOT_LASER_SCAN", &state_t::laser_scan_handler, this);
+            pose_fp = fopen("pose_data.txt","w");
+            odo_fp = fopen("odo_data.txt","w");
+            error_fp = fopen("error_data.txt","w");
+
         }
 
         ~state_t()
@@ -127,7 +136,8 @@ class state_t
             pthread_mutex_lock(&data_mutex);
 
             collins_path.push_back(*msg);
-
+            curr_collin_pose = *msg;
+            fprintf(pose_fp,"%lld %f %f\n",msg->utime,msg->x,msg->y);
             pthread_mutex_unlock(&data_mutex);
         }
 
@@ -147,6 +157,18 @@ class state_t
                 //printf("best particle: %f %f\n",particles.get_best().x,particles.get_best().y);
                 maebot_pose_t best = particles.get_best();
                 our_path.push_back(best);
+                float coeff = 0;
+                if(best.y > curr_collin_pose.y){
+                    coeff = 1;
+                }
+                else{
+                    coeff = -1;
+                }
+                float dy = best.y - curr_collin_pose.y;
+                float dx = best.x - curr_collin_pose.x;
+                float error = coeff*sqrt(dx*dx+dy*dy);
+                fprintf(odo_fp,"%lld %f %f\n",best.utime,best.x,best.y);
+                fprintf(error_fp,"%lld %f\n",best.utime,error);
                 //matcher.push_pose(&best);
             } 
             pthread_mutex_unlock(&data_mutex);
