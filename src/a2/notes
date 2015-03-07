@@ -1,0 +1,6 @@
+image processor should be build into it's own executable
+
+invoked with (../../bin/)ip -mask|-cp|-cal (optional file)
+
+these methods are only used when setting up at a new station
+not when every round is played.
