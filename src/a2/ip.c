@@ -21,6 +21,7 @@
 #include "common/zarray.h"
 
 // imagesource
+#include "imagesource/image_u8.h"
 #include "imagesource/image_u32.h"
 #include "imagesource/image_source.h"
 #include "imagesource/image_convert.h"
@@ -37,6 +38,7 @@ struct state {
     //A2 stuff
     int mode; //which mode of operation are we currently in
     bool capture; //has image been captured from camera
+    image_u32_t *u32_im;
 
     // image stuff
     char *img_url;
@@ -56,6 +58,8 @@ struct state {
     pthread_mutex_t mutex;
 };
 
+state_t * state_create (void);
+void state_destroy (state_t *state);
 
 // === Parameter listener =================================================
 // This function is handed to the parameter gui (via a parameter listener)
@@ -100,7 +104,7 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
     else if (0 == strcmp("but1", name))
     {
         //grab image from camera and save internally
-        //
+        state->capture = 1;
     }
     else if (0 == strcmp("but2", name))
     {
@@ -115,7 +119,15 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
     }
     else if (0 == strcmp("but3", name))
     {
-        //reset the application
+        printf("resetting application\n");
+        state->capture = 0;
+        state->mode = -1;
+        pg_sb(pg,"cb1",0);
+        pg_sb(pg,"cb2",0);
+        pg_sb(pg,"cb3",0);
+        //clear stored image(s)
+        //clear mask coords
+        //clear color sample pts
     }
     else //invalid
         printf("INVALID parameter change\n");
@@ -203,35 +215,49 @@ animate_thread (void *data)
                 printf ("get_frame fail: %d\n", res);
             else {
                 // Handle frame
-                image_u32_t *im = image_convert_u32 (frmd);
-                if (im != NULL) {
-                    vx_object_t *vim = vxo_image_from_u32(im,
+                //image_u32_t *im = image_convert_u32 (frmd);
+                state->u32_im = image_convert_u32 (frmd);
+                if (state->u32_im != NULL) {
+                    vx_object_t *vim = vxo_image_from_u32(state->u32_im,
                                                           VXO_IMAGE_FLIPY,
                                                           VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
 
                     // render the image centered at the origin and at a normalized scale of +/-1 unit in x-dir
-                    const double scale = 2./im->width;
+                    const double scale = 2./state->u32_im->width;
                     vx_buffer_add_back (vx_world_get_buffer (state->vxworld, "image"),
                                         vxo_chain (vxo_mat_scale3 (scale, scale, 1.0),
-                                                   vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
+                                                   vxo_mat_translate3 (-state->u32_im->width/2., -state->u32_im->height/2., 0.),
                                                    vim));
                     vx_buffer_swap (vx_world_get_buffer (state->vxworld, "image"));
-                    image_u32_destroy (im);
+                    //image_u32_destroy (im);
                 }
             }
             fflush (stdout);
             isrc->release_frame (isrc, frmd);
         }
 
-        if (state->capture)
-            break;
+        //if an image is captured keep displaying it
+        while (state->capture)
+        {
+            if (state->u32_im != NULL)
+            {
+                vx_object_t *vim = vxo_image_from_u32 (state->u32_im,
+                                                       VXO_IMAGE_FLIPY,
+                                                       VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
+
+                    // render the image centered at the origin and at a normalized scale of +/-1 unit in x-dir
+                    const double scale = 2./state->u32_im->width;
+                    vx_buffer_add_back (vx_world_get_buffer (state->vxworld, "image"),
+                                        vxo_chain (vxo_mat_scale3 (scale, scale, 1.0),
+                                                   vxo_mat_translate3 (-state->u32_im->width/2., -state->u32_im->height/2., 0.),
+                                                   vim));
+                    vx_buffer_swap (vx_world_get_buffer (state->vxworld, "image"));
+            }
+
+            usleep (1000000/fps);
+        }
 
         usleep (1000000/fps);
-    }
-    
-    while (state->running)
-    {
-    
     }
 
     if (isrc != NULL)
@@ -292,8 +318,7 @@ main (int argc, char *argv[])
     eecs467_init (argc, argv);
     state_t *state = state_create ();
 
-    // Parse arguments from the command line, showing the help
-    // screen if required
+    // Parse arguments from the command line, showing the help screen if required
     state->gopt = getopt_create ();
     getopt_add_bool   (state->gopt,  'h', "help", 0, "Show help");
     getopt_add_string (state->gopt, '\0', "url", "", "Camera URL");
