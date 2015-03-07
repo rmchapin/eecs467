@@ -1,32 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <string.h>
-#include <math.h>
-
-// core api
-#include "vx/vx.h"
-#include "vx/vx_util.h"
-#include "vx/vx_remote_display_source.h"
-#include "vx/gtk/vx_gtk_display_source.h"
-
-// drawables
-#include "vx/vxo_drawables.h"
-
-// common
-#include "common/getopt.h"
-#include "common/pg.h"
-#include "common/zarray.h"
-
-// imagesource
-#include "imagesource/image_u8.h"
-#include "imagesource/image_u32.h"
-#include "imagesource/image_source.h"
-#include "imagesource/image_convert.h"
-
-#include "eecs467_util.h"    // This is where a lot of the internals live
+#include "ip.h"
 
 // It's good form for every application to keep its state in a struct.
 typedef struct state state_t;
@@ -132,7 +104,8 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
         pg_sb(pg,"cb1",0);
         pg_sb(pg,"cb2",0);
         pg_sb(pg,"cb3",0);
-        //clear stored image(s)
+        if (state->u32_im)
+            image_u32_destroy(state->u32_im);
         //clear mask coords
         //clear color sample pts
     }
