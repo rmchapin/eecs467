@@ -223,6 +223,10 @@ animate_thread (void *data)
             else {
                 // Handle frame
                 //image_u32_t *im = image_convert_u32 (frmd);
+                if (state->u32_im)
+                {
+                    image_u32_destroy(state->u32_im);
+                }
                 state->u32_im = image_convert_u32 (frmd);
                 if (state->u32_im != NULL) {
                     vx_object_t *vim = vxo_image_from_u32(state->u32_im,
