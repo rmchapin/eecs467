@@ -110,7 +110,14 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
     {
         if (pg_gb(pg, "cb1") || pg_gb(pg,"cb2") || pg_gb(pg,"cb3"))
         {
-            //write results of current mode to file, if valid
+            if (state->capture)
+            {
+                //write results of current mode to file, if valid
+            }
+            else
+            {
+                printf("no image captured!\n");
+            }
         }
         else
         {
