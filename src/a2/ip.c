@@ -84,7 +84,7 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
         {
             if (state->capture)
             {
-                //write results of current mode to file, if valid
+                //advance state machine to next part of whatever mode
             }
             else
             {
@@ -152,18 +152,20 @@ key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
         {
             if (state->capture)
             {
-                printf("enter name for image:\n");
-                char in_buf[1024];
-                char *ret = fgets(in_buf, 1024, stdin);
-                if (ret == in_buf)
-                {
-                    char path[1024];
-                    strcat(path, in_buf);
-                    //strcat(path, "_");
-                    //strcat(path, time());
-                    strcat(path, ".pnm");
-                    (void) image_u32_write_pnm(state->u32_im, path);
-                }
+                //printf("enter name for image:\n");
+                //char path[100];
+                //char *ret = fgets(path, 100, stdin);
+                
+//printf("path is : %s\n", path);
+                //if (ret == path)
+                //{
+                    //char path[1024];
+                    //strcat(path, in_buf);
+                    //strcat(path, "pnm");
+                    //(void) image_u32_write_pnm(state->u32_im, path);
+                printf("imaged saved as \"cam_image.pnm\"\n");
+                (void) image_u32_write_pnm(state->u32_im, "cam_image.pnm");
+                //}
             }
         }
     }
@@ -326,14 +328,18 @@ main (int argc, char *argv[])
     eecs467_init (argc, argv);
     state_t *state = state_create ();
 
+
+    printf("here\n");
+
     // Parse arguments from the command line, showing the help screen if required
     state->gopt = getopt_create ();
     getopt_add_bool   (state->gopt,  'h', "help", 0, "Show help");
     getopt_add_string (state->gopt, '\0', "url", "", "Camera URL");
     getopt_add_bool   (state->gopt,  'l', "list", 0, "Lists available camera URLs and exit");
+    getopt_add_string (state->gopt,  'f', "file", "", "Image file to load");
 
     if (!getopt_parse (state->gopt, argc, argv, 1) || getopt_get_bool (state->gopt, "help")) {
-        printf ("Usage: %s [--url=CAMERAURL] [other options]\n\n", argv[0]);
+        printf ("Usage: %s [--url=CAMERAURL] [--file=IMAGEPATH] [other options]\n\n", argv[0]);
         getopt_do_usage (state->gopt);
         exit (EXIT_FAILURE);
     }
@@ -368,6 +374,21 @@ main (int argc, char *argv[])
         exit (EXIT_SUCCESS);
     }
 
+    if (strncmp(getopt_get_string(state->gopt, "file"), "", 1))
+    {
+        printf("loading from file not currently supported\n");
+        return -2;
+
+        state->u32_im = image_u32_create_from_pnm(getopt_get_string(state->gopt, "file"));      
+        if (!state->u32_im)
+        {
+            printf("specified file fails to load or does not exist!\n");
+            return -2;
+        }
+
+        state->capture = 1;
+    }
+
     // Initialize this application as a remote display source. This allows
     // you to use remote displays to render your visualization. Also starts up
     // the animation thread, in which a render loop is run to update your display.
@@ -384,7 +405,7 @@ main (int argc, char *argv[])
                         NULL);
     pg_add_buttons (state->pg,
                     "but1", "Capture Image",
-                    "but2", "Write to File",
+                    "but2", "Advance",
                     "but3", "Reset",
                     NULL);
 
