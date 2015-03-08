@@ -11,6 +11,13 @@ struct state {
     int mode; //which mode of operation are we currently in
     bool capture; //has image been captured from camera
     image_u32_t *u32_im;
+    image_u32_t *revert;
+    int fsm_counter;
+    double Hmin, Hmax, Smin, Smax, Vmin, Vmax;
+    HSV_p cp_array[5];
+    int cp_index;
+    double last_click_x;
+    double last_click_y;
 
     // image stuff
     char *img_url;
@@ -27,11 +34,28 @@ struct state {
     pthread_t animate_thread;
 
     // for accessing the arrays
-    pthread_mutex_t mutex;
+    //pthread_mutex_t mutex;
 };
 
 state_t * state_create (void);
 void state_destroy (state_t *state);
+
+void clear_all(state_t *state)
+{
+    //reset fsm counter
+    state->fsm_counter = 0;
+    //clear mask points
+    //clear color picker array
+    //zero color picker index
+    state->cp_index = 0;
+    state->Hmin = -1.0;
+    state->Hmax = -1.0;
+    state->Smin = -1.0;
+    state->Smax = -1.0;
+    state->Vmin = -1.0;
+    state->Vmax = -1.0;
+    //clear calibration points
+}
 
 // === Parameter listener =================================================
 // This function is handed to the parameter gui (via a parameter listener)
@@ -48,6 +72,7 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
         if (pg_gb(pg,name))
         {
             printf("masking mode selected\n");
+            clear_all(state);
             state->mode = 1;
             pg_sb(pg,"cb2",0);
             pg_sb(pg,"cb3",0);
@@ -58,6 +83,7 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
         if (pg_gb(pg,name))
         {
             printf("color picker selected\n");
+            clear_all(state);
             state->mode = 2;
             pg_sb(pg,"cb1",0);
             pg_sb(pg,"cb3",0);
@@ -68,6 +94,7 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
         if (pg_gb(pg,name))
         {
             printf("calibration mode selected\n");
+            clear_all(state);
             state->mode = 3;
             pg_sb(pg,"cb1",0);
             pg_sb(pg,"cb2",0);
@@ -85,10 +112,29 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
             if (state->capture)
             {
                 //advance state machine to next part of whatever mode
+                if (state->mode == 1)
+                {
+                    //mask
+                }
+                else if (state->mode == 2)
+                {
+                    //convert vx image coords to pixel index
+                    //RMC - figure this^ out
+                    //convert pixel to HSV
+                    //store in array
+                    //compare to bounds
+                    state->fsm_counter++;
+                    state->cp_index++;
+                }
+                else if (state->mode == 3)
+                {
+                    //calibration
+                }
+
             }
             else
             {
-                printf("no image captured!\n");
+                printf("you must CAPTURE an image!\n");
             }
         }
         else
@@ -99,16 +145,14 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
     else if (0 == strcmp("but3", name))
     {
         printf("resetting application\n");
+        
         state->capture = 0;
         state->mode = -1;
         pg_sb(pg,"cb1",0);
         pg_sb(pg,"cb2",0);
         pg_sb(pg,"cb3",0);
 
-        //if (state->u32_im)
-        //    image_u32_destroy(state->u32_im);
-        //clear mask coords
-        //clear color sample pts
+        clear_all(state);
     }
     else //invalid
         printf("INVALID parameter change\n");
@@ -152,19 +196,21 @@ key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
         {
             if (state->capture)
             {
+                printf("imaged saved as \"cam_image.pnm\"\n");
+                (void) image_u32_write_pnm(state->u32_im, "cam_image.pnm");
+
+                //RMC - fix this for user selected image saves
                 //printf("enter name for image:\n");
                 //char path[100];
                 //char *ret = fgets(path, 100, stdin);
                 
-//printf("path is : %s\n", path);
+                //printf("path is : %s\n", path);
                 //if (ret == path)
                 //{
                     //char path[1024];
                     //strcat(path, in_buf);
                     //strcat(path, "pnm");
                     //(void) image_u32_write_pnm(state->u32_im, path);
-                printf("imaged saved as \"cam_image.pnm\"\n");
-                (void) image_u32_write_pnm(state->u32_im, "cam_image.pnm");
                 //}
             }
         }
@@ -173,18 +219,7 @@ key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
     return 0;
 }
 
-static int
-touch_event (vx_event_handler_t *vh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_touch_event_t *mouse)
-{
-    return 0; // Does nothing
-}
-
-// === Your code goes here ================================================
-// The render loop handles your visualization updates. It is the function run
-// by the animate_thread. It periodically renders the contents on the
-// vx world contained by state
-void *
-animate_thread (void *data)
+void * animate_thread (void *data)
 {
     const int fps = 60;
     state_t *state = data;
@@ -227,6 +262,7 @@ animate_thread (void *data)
                     image_u32_destroy(state->u32_im);
                 }
                 state->u32_im = image_convert_u32 (frmd);
+                state->revert = image_convert_u32 (frmd);
                 if (state->u32_im != NULL) {
                     vx_object_t *vim = vxo_image_from_u32(state->u32_im,
                                                           VXO_IMAGE_FLIPY,
@@ -239,14 +275,13 @@ animate_thread (void *data)
                                                    vxo_mat_translate3 (-state->u32_im->width/2., -state->u32_im->height/2., 0.),
                                                    vim));
                     vx_buffer_swap (vx_world_get_buffer (state->vxworld, "image"));
-                    //image_u32_destroy (im);
                 }
             }
             fflush (stdout);
             isrc->release_frame (isrc, frmd);
         }
 
-        //if an image is captured keep displaying it
+        //continue displaying captured image
         while (state->capture)
         {
             if (state->u32_im != NULL)
@@ -285,7 +320,6 @@ state_create (void)
     state->vxeh = calloc (1, sizeof(*state->vxeh));
     state->vxeh->key_event = key_event;
     state->vxeh->mouse_event = mouse_event;
-    state->vxeh->touch_event = touch_event;
     state->vxeh->dispatch_order = 100;
     state->vxeh->impl = state; // this gets passed to events, so store useful struct here!
 
@@ -295,6 +329,14 @@ state_create (void)
 
     state->mode = -1; //start in no mode
     state->capture = 0;
+    state->fsm_counter = 0;
+    state->Hmin = -1.0;
+    state->Hmax = -1.0;
+    state->Smin = -1.0;
+    state->Smax = -1.0;
+    state->Vmin = -1.0;
+    state->Vmax = -1.0;
+    state->cp_index = 0;
 
     state->running = 1;
 
@@ -396,8 +438,6 @@ main (int argc, char *argv[])
 
     // Initialize a parameter gui
     state->pg = pg_create ();
-    //pg_add_double_slider (state->pg, "sl1", "Slider 1", 0, 100, 50);
-    //pg_add_int_slider    (state->pg, "sl2", "Slider 2", 0, 100, 25);
     pg_add_check_boxes (state->pg,
                         "cb1", "Mask Mode", 0,
                         "cb2", "Color Picker Mode", 0,

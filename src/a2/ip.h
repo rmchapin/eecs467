@@ -36,9 +36,9 @@ typedef struct {
 } ABGR_p;
 
 typedef struct {
-	unsigned char H;
-	unsigned char S;
-	unsigned char V;
+	double H;
+	double S;
+	double V;
 } HSV_p;
 
 HSV_p u32_pix_to_HSV(ABGR_p u32_in)
