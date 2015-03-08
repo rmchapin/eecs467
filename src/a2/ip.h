@@ -28,23 +28,23 @@
 
 #include "eecs467_util.h"    // This is where a lot of the internals live
 
-struct ABGR_p {
+typedef struct {
 	unsigned char A;
 	unsigned char B;
 	unsigned char G;
 	unsigned char R;
-};
+} ABGR_p;
 
-struct HSV_p {
+typedef struct {
 	unsigned char H;
 	unsigned char S;
 	unsigned char V;
-};
+} HSV_p;
 
 HSV_p u32_pix_to_HSV(ABGR_p u32_in)
 {
 	HSV_p out;
-	double min, max, delta;
+	//double min, max, delta;
 
 /*+ (HSV)HSVfromRGB:(RGBA)value
 {
@@ -87,4 +87,5 @@ HSV_p u32_pix_to_HSV(ABGR_p u32_in)
     
     return out;
 }*/
+    return out;
 }

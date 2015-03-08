@@ -104,8 +104,9 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
         pg_sb(pg,"cb1",0);
         pg_sb(pg,"cb2",0);
         pg_sb(pg,"cb3",0);
-        if (state->u32_im)
-            image_u32_destroy(state->u32_im);
+
+        //if (state->u32_im)
+        //    image_u32_destroy(state->u32_im);
         //clear mask coords
         //clear color sample pts
     }
@@ -143,7 +144,30 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
 static int
 key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
 {
-    //state_t *state = vxeh->impl;
+    state_t *state = vxeh->impl;
+    
+    if (key->key_code == VX_KEY_s)
+    {
+        if (key->released)
+        {
+            if (state->capture)
+            {
+                printf("enter name for image:\n");
+                char in_buf[1024];
+                char *ret = fgets(in_buf, 1024, stdin);
+                if (ret == in_buf)
+                {
+                    char path[1024];
+                    strcat(path, in_buf);
+                    //strcat(path, "_");
+                    //strcat(path, time());
+                    strcat(path, ".pnm");
+                    (void) image_u32_write_pnm(state->u32_im, path);
+                }
+            }
+        }
+    }
+
     return 0;
 }
 
