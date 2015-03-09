@@ -41,6 +41,11 @@ typedef struct {
 	double V;
 } HSV_p;
 
+typedef struct {
+    int x;
+    int y;
+} pix_coord;
+
 HSV_p u32_pix_to_HSV(ABGR_p u32_in)
 {
 	HSV_p out;

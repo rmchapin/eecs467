@@ -12,12 +12,14 @@ struct state {
     bool capture; //has image been captured from camera
     image_u32_t *u32_im;
     image_u32_t *revert;
-    int fsm_counter;
     double Hmin, Hmax, Smin, Smax, Vmin, Vmax;
-    HSV_p cp_array[5];
+    pix_coord last_click;
+    pix_coord cp_coords[5];
     int cp_index;
-    double last_click_x;
-    double last_click_y;
+    pix_coord mask_coords[2];
+    int mask_index;
+    pix_coord cal_coords[3];
+    int cal_index;
 
     // image stuff
     char *img_url;
@@ -42,8 +44,6 @@ void state_destroy (state_t *state);
 
 void clear_all(state_t *state)
 {
-    //reset fsm counter
-    state->fsm_counter = 0;
     //clear mask points
     //clear color picker array
     //zero color picker index
@@ -114,21 +114,27 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
                 //advance state machine to next part of whatever mode
                 if (state->mode == 1)
                 {
-                    //mask
+                    //if both have been captured.. write to file
                 }
                 else if (state->mode == 2)
                 {
-                    //convert vx image coords to pixel index
-                    //RMC - figure this^ out
                     //convert pixel to HSV
                     //store in array
                     //compare to bounds
-                    state->fsm_counter++;
                     state->cp_index++;
                 }
                 else if (state->mode == 3)
                 {
-                    //calibration
+                    //calibration - advance confirms last point
+                    if (state->cal_index == 4)
+                    {
+                        //write to file
+                    }
+                    else
+                    {
+                        state->cal_coords[state->cal_index] = state->last_click;
+                        state->cal_index++;
+                    }
                 }
 
             }
@@ -177,6 +183,21 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
 
         printf ("Mouse clicked at coords: [%8.3f, %8.3f]  Ground clicked at coords: [%6.3f, %6.3f]\n",
                 mouse->x, mouse->y, ground[0], ground[1]);
+
+        if (state->mode == 2 || state->mode == 3)
+        {
+            state->last_click.x = (int) (ground[0]+1)*0.5*state->img_width;
+            state->last_click.y = (int) (state->img_width/state->img_height - ground[1])*0.5*state->img_height;
+        }
+        else if (state->mode == 1)
+        {
+            if (state->mask_index < 2)
+            {
+                state->mask_coords[state->mask_index].x = (int) (ground[0]+1)*0.5*state->img_width;
+                state->mask_coords[state->mask_index].y = (int) (state->img_width/state->img_height - ground[1])*0.5*state->img_height;
+                state->mask_index++;
+            }
+        }
     }
 
     // store previous mouse event to see if the user *just* clicked or released
@@ -243,6 +264,11 @@ void * animate_thread (void *data)
         }
         isrc->start (isrc);
     }
+
+    image_source_format_t ifmt;
+    isrc->get_format (isrc, 0, &ifmt);
+    state->img_width = ifmt.width;
+    state->img_height = ifmt.height;
 
     // Continue running until we are signaled otherwise. This happens
     // when the window is closed/Ctrl+C is received.
@@ -329,14 +355,20 @@ state_create (void)
 
     state->mode = -1; //start in no mode
     state->capture = 0;
-    state->fsm_counter = 0;
+
     state->Hmin = -1.0;
     state->Hmax = -1.0;
     state->Smin = -1.0;
     state->Smax = -1.0;
     state->Vmin = -1.0;
     state->Vmax = -1.0;
+    
+    state->last_click.x = -1;
+    state->last_click.y = -1;
+
     state->cp_index = 0;
+    state->mask_index = 0;
+    state->cal_index = 0;
 
     state->running = 1;
 
@@ -418,8 +450,8 @@ main (int argc, char *argv[])
 
     if (strncmp(getopt_get_string(state->gopt, "file"), "", 1))
     {
-        printf("loading from file not currently supported\n");
-        return -2;
+        //printf("loading from file not currently supported\n");
+        //return -2;
 
         state->u32_im = image_u32_create_from_pnm(getopt_get_string(state->gopt, "file"));      
         if (!state->u32_im)
