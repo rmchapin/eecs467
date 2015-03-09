@@ -8,10 +8,14 @@ struct state {
     parameter_gui_t *pg;
     
     //A2 stuff
-    int mode; //which mode of operation are we currently in
+    int mode; // which mode of operation are we currently in
+              // mode = 1: mask mode
+              // mode = 2: color picker mode
+              // mode = 3: calibration mode
     bool capture; //has image been captured from camera
     image_u32_t *u32_im;
     image_u32_t *revert;
+
     double Hmin, Hmax, Smin, Smax, Vmin, Vmax;
     pix_coord last_click;
     pix_coord cp_coords[5];
@@ -221,18 +225,22 @@ key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
                 (void) image_u32_write_pnm(state->u32_im, "cam_image.pnm");
 
                 //RMC - fix this for user selected image saves
-                //printf("enter name for image:\n");
-                //char path[100];
-                //char *ret = fgets(path, 100, stdin);
+                printf("enter name for image:\n");
+                char path[100];
+                char *ret = fgets(path, 100, stdin);
                 
-                //printf("path is : %s\n", path);
-                //if (ret == path)
-                //{
-                    //char path[1024];
-                    //strcat(path, in_buf);
-                    //strcat(path, "pnm");
-                    //(void) image_u32_write_pnm(state->u32_im, path);
-                //}
+                printf("path is : %s\n", path);
+                if (ret == path)
+                {
+                    char path[1024];
+
+                    // replace \n with null character because fgets is terrible
+                    int len = strlen(path);
+                    path[len - 2] = '\0';
+                    
+                    strcat(path, "pnm");
+                    (void) image_u32_write_pnm(state->u32_im, path);
+                }
             }
         }
     }
@@ -369,6 +377,8 @@ state_create (void)
     state->cp_index = 0;
     state->mask_index = 0;
     state->cal_index = 0;
+
+    state->cal_count = 0;
 
     state->running = 1;
 
