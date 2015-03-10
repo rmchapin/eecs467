@@ -20,7 +20,7 @@ ImageProcessor::~ImageProcessor()
 
 void ImageProcessor::read_from_file(char *filename)
 {
-    ifstream input(filename);
+    std::ifstream input(filename);
     double x, y;
     for(int i = 0; i < 3; i++)
     {
