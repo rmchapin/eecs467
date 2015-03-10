@@ -27,8 +27,8 @@ struct state {
 
     // image stuff
     char *img_url;
-    int   img_height;
-    int   img_width;
+    float img_height;
+    float img_width;
 
     // vx stuff
     vx_application_t    vxapp;
@@ -49,7 +49,7 @@ void state_destroy (state_t *state);
 void clear_all(state_t *state)
 {
     //clear mask points
-    //clear color picker array
+    state->mask_index = 0;
     //zero color picker index
     state->cp_index = 0;
     state->Hmin = -1.0;
@@ -121,7 +121,10 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
                 //advance state machine to next part of whatever mode
                 if (state->mode == 1)
                 {
-                    //if both have been captured.. write to file
+                    if (state->mask_index == 2) //if both mask pts have been stored
+                    {
+                        printf("we wrote the mask to file\n");
+                    }
                 }
                 else if (state->mode == 2)
                 {
@@ -196,20 +199,19 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
         double ground[3];
         vx_ray3_intersect_xy (&ray, 0, ground);
 
-        printf ("Mouse clicked at coords: [%8.3f, %8.3f]  Ground clicked at coords: [%6.3f, %6.3f]\n",
-                mouse->x, mouse->y, ground[0], ground[1]);
+        //printf ("Mouse clicked at coords: [%8.3f, %8.3f]  Ground clicked at coords: [%6.3f, %6.3f]\n",
+        //        mouse->x, mouse->y, ground[0], ground[1]);
 
-        if (state->mode == 2 || state->mode == 3)
-        {
-            state->last_click.x = (int) (ground[0]+1)*0.5*state->img_width;
-            state->last_click.y = (int) (state->img_width/state->img_height - ground[1])*0.5*state->img_height;
-        }
-        else if (state->mode == 1)
+        state->last_click.x = (int) ((ground[0] + 1.0f) * 0.5f * state->img_width);
+        state->last_click.y = (int) (((state->img_width/2.0) * ground[1]) + (0.5f * state->img_height));
+        printf("click registered at pix_coord: %d, %d\n", state->last_click.x, state->last_click.y);
+
+        if (state->mode == 1 && state->capture)
         {
             if (state->mask_index < 2)
             {
-                state->mask_coords[state->mask_index].x = (int) (ground[0]+1)*0.5*state->img_width;
-                state->mask_coords[state->mask_index].y = (int) (state->img_width/state->img_height - ground[1])*0.5*state->img_height;
+                state->mask_coords[state->mask_index].x = state->last_click.x;
+                state->mask_coords[state->mask_index].y = state->last_click.y;
                 state->mask_index++;
             }
         }
@@ -286,8 +288,8 @@ void * animate_thread (void *data)
 
     image_source_format_t ifmt;
     isrc->get_format (isrc, 0, &ifmt);
-    state->img_width = ifmt.width;
-    state->img_height = ifmt.height;
+    state->img_width  = (float) ifmt.width;
+    state->img_height = (float) ifmt.height;
 
     // Continue running until we are signaled otherwise. This happens
     // when the window is closed/Ctrl+C is received.
