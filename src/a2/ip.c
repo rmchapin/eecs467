@@ -62,19 +62,6 @@ void clear_all(state_t *state)
     state->cal_index = 0;
 }
 
-int max(int a, int b)
-{
-    if(a>b)
-        return a;
-    return b;
-}
-int min(int a, int b)
-{
-    if(a<b)
-        return a;
-    return b;
-}
-
 void printMask(state_t *state, const char* filename)
 {
     printf("mask written to file: \"%s\"\n", filename);
