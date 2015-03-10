@@ -9,6 +9,8 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
 
+#include <iostream>
+
 class ImageProcessor
 {
     public:
@@ -18,6 +20,8 @@ class ImageProcessor
         void calculate_x();
         void read_from_file(char *filename)
         void calculate_arm_coords(gsl_vector *point, gsl_vector *world);
+
+        void print_x();
     private:
         double A[36];
         double b[6];

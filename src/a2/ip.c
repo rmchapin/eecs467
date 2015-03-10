@@ -59,6 +59,7 @@ void clear_all(state_t *state)
     state->Vmin = -1.0;
     state->Vmax = -1.0;
     //clear calibration points
+    state->cal_index = 0;
 }
 
 // === Parameter listener =================================================
@@ -109,6 +110,8 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
         //grab image from camera and save internally
         state->capture = 1;
     }
+
+    //if advance button
     else if (0 == strcmp("but2", name))
     {
         if (pg_gb(pg, "cb1") || pg_gb(pg,"cb2") || pg_gb(pg,"cb3"))
@@ -133,6 +136,14 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
                     if (state->cal_index == 4)
                     {
                         //write to file
+                        FILE *fp;
+                        fp = fopen("calibration.txt", "w");
+                        int i;
+                        for(i = 0; i < 3; i++)
+                        {
+                            fprintf(fp, "%d %d\n", state->cal_coords[i].x, state->cal_coords[i].y);
+                        }
+                        fclose(fp);
                     }
                     else
                     {
