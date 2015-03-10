@@ -18,9 +18,9 @@ ImageProcessor::~ImageProcessor()
     gsl_vector_free(x);
 }
 
-void ImageProcessor::read_from_file(char *filename)
+void ImageProcessor::read_from_file(const char *filename)
 {
-    ifstream input(filename);
+    std::ifstream input(filename);
     double x, y;
     for(int i = 0; i < 3; i++)
     {
@@ -76,6 +76,15 @@ void ImageProcessor::calculate_arm_coords(gsl_vector *point, gsl_vector *world)
     gslu_blas_mv (world, T, point);
 }
 
+void ImageProcessor::print_x()
+{
+    std::cout << "x: [" << gsl_vector_get(x, 0) << std::endl;
+    std::cout << "    " << gsl_vector_get(x, 1) << std::endl;
+    std::cout << "    " << gsl_vector_get(x, 2) << std::endl;
+    std::cout << "    " << gsl_vector_get(x, 3) << std::endl;
+    std::cout << "    " << gsl_vector_get(x, 4) << std::endl;
+    std::cout << "    " << gsl_vector_get(x, 5) << "]" << std::endl;
+}
 
 // alright so state of our class at the moment:
 // struct of HSV values (probably named something like....HSV because creativity is hard)

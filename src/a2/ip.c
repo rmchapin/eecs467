@@ -62,7 +62,6 @@ void clear_all(state_t *state)
     state->cal_index = 0;
 }
 
-
 int max(int a, int b)
 {
     if(a>b)
@@ -78,6 +77,8 @@ int min(int a, int b)
 
 void printMask(state_t *state, const char* filename)
 {
+    printf("mask written to file: \"%s\"\n", filename);
+
     FILE * fptr = fopen(filename, "w");
     fprintf(fptr, "%i %i %i %i", (int)(state->mask_coords[0].x), (int)(state->mask_coords[0].y), 
                            (int)(state->mask_coords[1].x), (int)(state->mask_coords[1].y));
@@ -94,19 +95,29 @@ void mask(state_t *state)
     int x, y;
     for (y = 0; y < im->height; y++) {
          for (x = 0; x < im->width; x++) {
+
 	     if(x<x1 || y<y1 || y>y2 || x>x2){
+
+
+
                  im->buf[y*im->stride +x] = 0;   
              }
          }
     }
+
     state->mask_coords[0].x = x1;
     state->mask_coords[0].y = y1;
     state->mask_coords[1].x = x2;
     state->mask_coords[1].y = y2;
+
+
     printMask(state, "mask.txt");
     (void) image_u32_write_pnm (im, "masked_image.pnm");
     return;  
 }
+
+
+
 
 
 // === Parameter listener =================================================
@@ -237,14 +248,9 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
         double ground[3];
         vx_ray3_intersect_xy (&ray, 0, ground);
 
-        //printf ("Mouse clicked at coords: [%8.3f, %8.3f]  Ground clicked at coords: [%6.3f, %6.3f]\n",
-        //        mouse->x, mouse->y, ground[0], ground[1]);
-
         state->last_click.x = (int) ((ground[0] + 1.0f) * 0.5f * state->img_width);
-        state->last_click.y = (int) ((((float)(state->img_height)/(float)(state->img_width)
-                                     ) - ground[1]
-                                    )* 0.5f * (float)(state->img_width));
 	state->last_click.y = state->img_height - state->last_click.y;
+        state->last_click.y = (int) ((((float)(state->img_height)/(float)(state->img_width)) - ground[1])* 0.5f * (float)(state->img_width));
         printf("click registered at pix_coord: %d, %d\n", state->last_click.x, state->last_click.y);
 
         if (state->mode == 1 && state->capture)

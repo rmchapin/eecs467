@@ -46,6 +46,20 @@ typedef struct {
     int y;
 } pix_coord;
 
+int max(int a, int b)
+{
+    if(a>b)
+        return a;
+    return b;
+}
+
+int min(int a, int b)
+{
+    if(a<b)
+        return a;
+    return b;
+}
+
 HSV_p u32_pix_to_HSV(ABGR_p u32_in)
 {
 	HSV_p out;
