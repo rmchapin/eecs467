@@ -62,19 +62,6 @@ void clear_all(state_t *state)
     state->cal_index = 0;
 }
 
-int max(int a, int b)
-{
-    if(a>b)
-        return a;
-    return b;
-}
-int min(int a, int b)
-{
-    if(a<b)
-        return a;
-    return b;
-}
-
 void printMask(state_t *state, const char* filename)
 {
     printf("mask written to file: \"%s\"\n", filename);
@@ -196,9 +183,19 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
                     if (state->cal_index == 4)
                     {
                         //write to file
+			printf("printing to file\n");
+			FILE *fp;
+			fp = fopen("calibration.txt", "w");
+			int i;
+			for(i = 0; i < 3; i++)
+			{
+				fprintf(fp, "%d %d\n", state->cal_coords[i].x, state->cal_coords[i].y);
+			}
+			fclose(fp);
                     }
                     else
                     {
+			printf("stored coord in cal_coords\n");
                         state->cal_coords[state->cal_index] = state->last_click;
                         state->cal_index++;
                     }
@@ -249,8 +246,8 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
         vx_ray3_intersect_xy (&ray, 0, ground);
 
         state->last_click.x = (int) ((ground[0] + 1.0f) * 0.5f * state->img_width);
-	state->last_click.y = state->img_height - state->last_click.y;
         state->last_click.y = (int) ((((float)(state->img_height)/(float)(state->img_width)) - ground[1])* 0.5f * (float)(state->img_width));
+state->last_click.y = state->img_height - state->last_click.y;
         printf("click registered at pix_coord: %d, %d\n", state->last_click.x, state->last_click.y);
 
         if (state->mode == 1 && state->capture)
