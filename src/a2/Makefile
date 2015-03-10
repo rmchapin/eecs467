@@ -59,9 +59,9 @@ $(BIN_IP): ip.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CC) -o $@ $^ $(LDFLAGS) $(LIB_EECS467)
 
-$(BIN_IMAGE_PROCESSOR): ImageProcessor.o driver.cpp $(LIB_EECS467) $(LIBDEPS) $(LIB_VXGTK) $(LIB_VXGL) $(LIB_VX)
+$(BIN_IMAGE_PROCESSOR): ImageProcessor.o driver.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
-	@$(CXX) -o $@ $^ $(LDFLAGS) $(LIB_EECS467)
+	@$(CXX) -o $@ $^ $(LDFLAGS)
 
 #$(BIN_EECS467_REXARM_EXAMPLE): rexarm_example.o $(LIBDEPS)
 #	@echo "\t$@"

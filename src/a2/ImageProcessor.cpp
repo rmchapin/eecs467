@@ -18,7 +18,7 @@ ImageProcessor::~ImageProcessor()
     gsl_vector_free(x);
 }
 
-void ImageProcessor::read_from_file(char *filename)
+void ImageProcessor::read_from_file(const char *filename)
 {
     std::ifstream input(filename);
     double x, y;

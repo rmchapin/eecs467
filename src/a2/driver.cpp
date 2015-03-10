@@ -12,6 +12,7 @@ int main()
     ip.print_x();
 
     gsl_vector *point;
+    point = gsl_vector_alloc(6);
     gsl_vector_set(point, 0, 0);
     gsl_vector_set(point, 1, 0);
     gsl_vector_set(point, 2, 0);
@@ -19,6 +20,7 @@ int main()
     gsl_vector_set(point, 4, 0);
     gsl_vector_set(point, 5, 0);
     gsl_vector *world;
+    world = gsl_vector_alloc(6);
     ip.calculate_arm_coords(point, world);
 
     cout << "world: [" << gsl_vector_get(world, 0) << endl;
