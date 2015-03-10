@@ -389,8 +389,6 @@ state_create (void)
     state->mask_index = 0;
     state->cal_index = 0;
 
-    state->cal_count = 0;
-
     state->running = 1;
 
     return state;
