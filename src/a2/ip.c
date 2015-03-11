@@ -27,8 +27,8 @@ struct state {
 
     // image stuff
     char *img_url;
-    float img_height;
-    float img_width;
+    int img_height;
+    int img_width;
 
     // vx stuff
     vx_application_t    vxapp;
@@ -82,11 +82,7 @@ void mask(state_t *state)
     int x, y;
     for (y = 0; y < im->height; y++) {
          for (x = 0; x < im->width; x++) {
-
-	     if(x<x1 || y<y1 || y>y2 || x>x2){
-
-
-
+    	     if(x<x1 || y<y1 || y>y2 || x>x2){
                  im->buf[y*im->stride +x] = 0;   
              }
          }
@@ -97,10 +93,81 @@ void mask(state_t *state)
     state->mask_coords[1].x = x2;
     state->mask_coords[1].y = y2;
 
-
     printMask(state, "mask.txt");
     (void) image_u32_write_pnm (im, "masked_image.pnm");
     return;  
+}
+
+void process_cp(state_t *state)
+{
+    int m;
+    for (m = 0; m < state->cp_index; m++)
+    {
+        //make rgba pixel
+        ABGR_p pixel_abgr;
+        uint32_t val = state->revert->buf[(state->img_height - state->cp_coords[m].y) * state->revert->stride + state->cp_coords[m].x];
+        pixel_abgr.a = 0xFF & (val >> 24);
+        pixel_abgr.b = 0xFF & (val >> 16);
+        pixel_abgr.g = 0xFF & (val >> 8);
+        pixel_abgr.r = 0xFF & val;
+        
+        //convert to hsv and update bounds
+        HSV_p pixel_hsv;
+        pixel_hsv = u32_pix_to_HSV(pixel_abgr);
+
+        printf("pixel_hsv has values: %f, %f, %f\n", pixel_hsv.h, pixel_hsv.s, pixel_hsv.v);
+
+        if (state->Hmin == -1.0)
+        {
+            state->Hmin = state->Hmax = pixel_hsv.h;
+            state->Smin = state->Smax = pixel_hsv.s;
+            state->Vmin = state->Vmax = pixel_hsv.v;
+        }
+        else
+        {
+            if (pixel_hsv.h < state->Hmin)
+                state->Hmin = pixel_hsv.h;
+            if (pixel_hsv.h > state->Hmax)
+                state->Hmax = pixel_hsv.h;
+            if (pixel_hsv.s < state->Smin)
+                state->Smin = pixel_hsv.s;
+            if (pixel_hsv.s > state->Smax)
+                state->Smax = pixel_hsv.s;
+            if (pixel_hsv.v < state->Vmin)
+                state->Hmin = pixel_hsv.v;
+            if (pixel_hsv.v > state->Vmax)
+                state->Vmax = pixel_hsv.v;
+        }
+    }
+    
+    //update image with hsv bounds
+    int p, q;
+    for (p = 0; p < state->img_height; p++)
+    {
+        for (q = 0; q < state->img_width; q++)
+        {
+            //make rgba pixel
+            ABGR_p pixel_abgr;
+            uint32_t val = state->revert->buf[(state->img_height - p) * state->revert->stride + q];
+            pixel_abgr.a = 0xFF & (val >> 24);
+            pixel_abgr.b = 0xFF & (val >> 16);
+            pixel_abgr.g = 0xFF & (val >> 8);
+            pixel_abgr.r = 0xFF & val;
+
+            HSV_p pixel_hsv;
+            pixel_hsv = u32_pix_to_HSV(pixel_abgr);
+
+            if ((pixel_hsv.h >= state->Hmin) && 
+                (pixel_hsv.h <= state->Hmax) &&
+                (pixel_hsv.s >= state->Smin) &&
+                (pixel_hsv.s <= state->Smax) &&
+                (pixel_hsv.v >= state->Vmin) &&
+                (pixel_hsv.v <= state->Vmax))
+            {
+                state->u32_im->buf[(state->img_height - p) * state->revert->stride + q] = 0xFFE600CB;
+            }
+        }
+    }
 }
 
 // === Parameter listener =================================================
@@ -163,14 +230,33 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
                     if (state->mask_index == 2) //if both mask pts have been stored
                     {
 			            mask(state);
-                        printf("we wrote the mask to file\n");
                     }
                 }
                 else if (state->mode == 2)
                 {
                     //convert pixel to HSV
-                    //store in array
-                    //compare to bounds
+                    if (state->cp_index > 1)
+                    {
+                        //write to file
+                        printf("enter name for color range:\n");
+                        char path[100];
+                        char *ret = fgets(path, 100, stdin);
+                        if (ret == path)
+                        {
+                            int len = strlen(path);
+                            path[len - 2] = '\0'; // replace \n with null character because fgets is terrible
+                        }
+
+                        FILE *fp;
+                        fp = fopen(path, "w");
+                        int i;
+                        for(i = 0; i < state->cp_index; i++)
+                        {
+                            fprintf(fp, "%d %d\n", state->cal_coords[i].x, state->cal_coords[i].y);
+                        }
+                        fclose(fp);
+                        printf("color range written to file\n");
+                    }
                     state->cp_index++;
                 }
                 else if (state->mode == 3)
@@ -179,8 +265,7 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
                     if (state->cal_index == 3)
                     {
                         //write to file
-            			printf("printing to file\n");
-            			FILE *fp;
+                        FILE *fp;
             			fp = fopen("calibration.txt", "w");
             			int i;
             			for(i = 0; i < 3; i++)
@@ -188,6 +273,7 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
             				fprintf(fp, "%d %d\n", state->cal_coords[i].x, state->cal_coords[i].y);
             			}
             			fclose(fp);
+                        printf("cal info written to file: \"calibration.txt\"\n");
                     }
                     else if (state->last_click.x != -1)
                     {
@@ -198,7 +284,6 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
                         state->cal_index++;
                     }
                 }
-
             }
             else
             {
@@ -252,9 +337,18 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
         {
             if (state->mask_index < 2)
             {
-                state->mask_coords[state->mask_index].x = state->last_click.x;
-                state->mask_coords[state->mask_index].y = state->last_click.y;
+                state->mask_coords[state->mask_index] = state->last_click;
                 state->mask_index++;
+            }
+        }
+        else if (state->mode == 2 && state->capture)
+        {
+            if (state->cp_index < 5)
+            {
+                printf("point added to cp_coords\n");
+                state->cp_coords[state->cp_index] = state->last_click;
+                state->cp_index++;
+                process_cp(state);
             }
         }
     }
@@ -270,33 +364,38 @@ key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
 {
     state_t *state = vxeh->impl;
     
-    if (key->key_code == VX_KEY_s)
+    if (key->key_code == VX_KEY_s && key->released)
     {
-        if (key->released)
+        if (state->capture)
         {
-            if (state->capture)
+            printf("enter name for image:\n");
+            char path[100];
+            char *ret = fgets(path, 100, stdin);
+            
+            if (ret == path)
             {
-                printf("imaged saved as \"cam_image.pnm\"\n");
-                (void) image_u32_write_pnm(state->u32_im, "cam_image.pnm");
-
-                //RMC - fix this for user selected image saves
-                printf("enter name for image:\n");
-                char path[100];
-                char *ret = fgets(path, 100, stdin);
-                
-                printf("path is : %s\n", path);
-                if (ret == path)
-                {
-                    char path[1024];
-
-                    // replace \n with null character because fgets is terrible
-                    int len = strlen(path);
-                    path[len - 2] = '\0';
-                    
-                    strcat(path, "pnm");
-                    (void) image_u32_write_pnm(state->u32_im, path);
-                }
+                // replace \n with null character because fgets is terrible
+                int len = strlen(path);
+                path[len - 2] = '\0';
+                strcat(path, "pnm");
+                (void) image_u32_write_pnm(state->u32_im, path);
             }
+        }
+    }
+    else if (key->key_code == VX_KEY_DEL && key->released)
+    {
+        if (state->mode == 2)
+        {
+            if (state->u32_im)
+            {
+                image_u32_destroy(state->u32_im);
+            }
+            state->u32_im = image_u32_copy(state->revert);
+            if (state->cp_index > 0)
+            {
+                state->cp_index--;
+            }
+            process_cp(state);
         }
     }
 
@@ -330,8 +429,8 @@ void * animate_thread (void *data)
 
     image_source_format_t ifmt;
     isrc->get_format (isrc, 0, &ifmt);
-    state->img_width  = (float) ifmt.width;
-    state->img_height = (float) ifmt.height;
+    state->img_width  = ifmt.width;
+    state->img_height = ifmt.height;
 
     // Continue running until we are signaled otherwise. This happens
     // when the window is closed/Ctrl+C is received.

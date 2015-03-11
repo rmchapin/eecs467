@@ -29,16 +29,16 @@
 #include "eecs467_util.h"    // This is where a lot of the internals live
 
 typedef struct {
-	unsigned char A;
-	unsigned char B;
-	unsigned char G;
-	unsigned char R;
+	unsigned char a;
+	unsigned char b;
+	unsigned char g;
+	unsigned char r;
 } ABGR_p;
 
 typedef struct {
-	double H;
-	double S;
-	double V;
+	double h;
+	double s;
+	double v;
 } HSV_p;
 
 typedef struct {
@@ -63,48 +63,44 @@ int min(int a, int b)
 HSV_p u32_pix_to_HSV(ABGR_p u32_in)
 {
 	HSV_p out;
-	//double min, max, delta;
+	double min, max, delta;
 
-/*+ (HSV)HSVfromRGB:(RGBA)value
-{
-    HSV         out;
-    double      min, max, delta;
+    min = u32_in.r < u32_in.g ? u32_in.r : u32_in.g;
+    min = min  < u32_in.b ? min  : u32_in.b;
     
-    min = value.r < value.g ? value.r : value.g;
-    min = min  < value.b ? min  : value.b;
+    max = u32_in.r > u32_in.g ? u32_in.r : u32_in.g;
+    max = max  > u32_in.b ? max  : u32_in.b;
     
-    max = value.r > value.g ? value.r : value.g;
-    max = max  > value.b ? max  : value.b;
-    
-    out.v = max;                                // v
+    out.v = max / 255.0;                        // v
     delta = max - min;
     if( max > 0.0 )
     {
         out.s = (delta / max);                  // s
-    } else
+    }
+    else
     {
         // r = g = b = 0                        // s = 0, v is undefined
         out.s = 0.0;
         out.h = NAN;                            // its now undefined
         return out;
     }
-    if( value.r >= max )                        // > is bogus, just keeps compilor happy
+    
+    if( u32_in.r >= max )                        // > is bogus, just keeps compilor happy
     {
-        out.h = ( value.g - value.b ) / delta;        // between yellow & magenta
-    } else
+        out.h = ( u32_in.g - u32_in.b ) / delta;        // between yellow & magenta
+    }
+    else
     {
-        if( value.g >= max )
-            out.h = 2.0 + ( value.b - value.r ) / delta;  // between cyan & yellow
+        if( u32_in.g >= max )
+            out.h = 2.0 + ( u32_in.b - u32_in.r ) / delta;  // between cyan & yellow
         else
-            out.h = 4.0 + ( value.r - value.g ) / delta;  // between magenta & cyan
+            out.h = 4.0 + ( u32_in.r - u32_in.g ) / delta;  // between magenta & cyan
     }
     
     out.h *= 60.0;                              // degrees
     
     if( out.h < 0.0 )
         out.h += 360.0;
-    
-    return out;
-}*/
+
     return out;
 }
