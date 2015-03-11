@@ -40,7 +40,7 @@ LIB_EECS467 = $(LIB_PATH)/libeecs467.a
 LIBEECS467_OBJS = eecs467_util.o
 
 BIN_IP = $(BIN_PATH)/ip
-BIN_IMAGE_PROCESSOR = $(BIN_PATH)/ImageProcessor
+BIN_IMAGE_PROCESSOR = $(BIN_PATH)/a2_image_to_arm_coord
 #BIN_EECS467_REXARM_EXAMPLE = $(BIN_PATH)/eecs467_rexarm_example
 #BIN_EECS467_MAEBOT_EXAMPLE = $(BIN_PATH)/eecs467_maebot_example
 #BIN_EECS467_MAEBOT_VIDEO_TELOP = $(BIN_PATH)/eecs467_maebot_video_telop
