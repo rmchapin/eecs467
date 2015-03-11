@@ -21,6 +21,8 @@ class ImageProcessor
         void calculate_arm_coords(gsl_vector *point, gsl_vector *world);
 
         void print_x();
+        void print_A();
+        void print_b();
     private:
         double A[36];
         double b[6];

@@ -25,14 +25,17 @@ void ImageProcessor::read_from_file(const char *filename)
     for(int i = 0; i < 3; i++)
     {
         input >> x >> y;
+        std::cout << "X: " << x << "  Y: " << y << std::endl;
         set_im_coord(x, y, i);
     }
+    print_A();
     input.close();
 }
 
 void ImageProcessor::set_im_coord(double x, double y, int pos)
 {
     int index = 12*pos;
+    std::cout << "index: " << index << std::endl;
     A[index] = x;
     A[index+1] = y;
     A[index+2] = 1;
@@ -84,6 +87,27 @@ void ImageProcessor::print_x()
     std::cout << "    " << gsl_vector_get(x, 3) << std::endl;
     std::cout << "    " << gsl_vector_get(x, 4) << std::endl;
     std::cout << "    " << gsl_vector_get(x, 5) << "]" << std::endl;
+}
+
+void ImageProcessor::print_A()
+{
+    std::cout << "A: [" << A[0] << " " << A[1] << " " << A[2] << " " << A[3] << " " << A[4] << " " << A[5] << std::endl;
+    std::cout << "    " << A[6] << " " << A[7] << " " << A[8] << " " << A[9] << " " << A[10] << " " << A[11] << std::endl;
+    std::cout << "    " << A[12] << " " << A[13] << " " << A[14] << " " << A[15] << " " << A[16] << " " << A[17] << std::endl;
+    std::cout << "    " << A[18] << " " << A[19] << " " << A[20] << " " << A[21] << " " << A[22] << " " << A[23] << std::endl;
+    std::cout << "    " << A[24] << " " << A[25] << " " << A[26] << " " << A[27] << " " << A[28] << " " << A[29] << std::endl;
+    std::cout << "    " << A[30] << " " << A[31] << " " << A[32] << " " << A[33] << " " << A[34] << " " << A[35] << "]" << std::endl;
+
+}
+
+void ImageProcessor::print_b()
+{
+    std::cout << "b: [" << b[0] << std::endl;
+    std::cout << "    " << b[1] << std::endl;
+    std::cout << "    " << b[2] << std::endl;
+    std::cout << "    " << b[3] << std::endl;
+    std::cout << "    " << b[4] << std::endl;
+    std::cout << "    " << b[5] << "]" << std::endl;
 }
 
 // alright so state of our class at the moment:
