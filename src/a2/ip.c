@@ -244,16 +244,13 @@ my_param_changed (parameter_listener_t *pl, parameter_gui_t *pg, const char *nam
                         if (ret == path)
                         {
                             int len = strlen(path);
-                            path[len - 2] = '\0'; // replace \n with null character because fgets is terrible
+                            path[len - 1] = '\0'; // replace \n with null character because fgets is terrible
+                            strcat(path, ".txt");
                         }
 
                         FILE *fp;
                         fp = fopen(path, "w");
-                        int i;
-                        for(i = 0; i < state->cp_index; i++)
-                        {
-                            fprintf(fp, "%d %d\n", state->cal_coords[i].x, state->cal_coords[i].y);
-                        }
+                        fprintf(fp, "%f %f %f %f %f %f\n", state->Hmin, state->Hmax, state->Smin, state->Smax, state->Vmin, state->Vmax);
                         fclose(fp);
                         printf("color range written to file\n");
                     }
