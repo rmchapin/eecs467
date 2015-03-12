@@ -8,7 +8,7 @@ int main()
     Arm arm;
     
     // first pose:
-    coord next_coord = {216, -89};
+    coord next_coord = {220, -89};
     ArmPosition next_pos = arm.nextPose(next_coord);
     
     cout << "first pose: " << endl;
@@ -46,7 +46,7 @@ int main()
     cout << "servo 5: " << next_pos.theta5 << endl;
 
     // fourth pose:
-    next_coord.x = 95;
+    next_coord.x = 102;
     next_coord.y = -25;
     next_pos = arm.nextPose(next_coord);
     
@@ -59,7 +59,7 @@ int main()
     cout << "servo 5: " << next_pos.theta5 << endl;
 
     // fifth pose:
-    next_coord.x = 155;
+    next_coord.x = 160;
     next_coord.y = 25;
     next_pos = arm.nextPose(next_coord);
     
