@@ -8,7 +8,7 @@ CXXFLAGS = $(CXXFLAGS_STD) \
 	$(CFLAGS_COMMON) \
 	$(CFLAGS_LCMTYPES) \
 	$(CFLAGS_GSL) \
-    -O2
+    -g
 
 CFLAGS = $(CFLAGS_STD) \
 	$(CFLAGS_VX_GTK) \
@@ -17,7 +17,7 @@ CFLAGS = $(CFLAGS_STD) \
 	$(CFLAGS_COMMON) \
 	$(CFLAGS_LCMTYPES) \
 	$(CFLAGS_GSL) \
-    -O2
+    -g
 
 LDFLAGS = $(LDFLAGS_STD) \
 	  $(LDFLAGS_VX_GL) \
@@ -41,11 +41,13 @@ LIBEECS467_OBJS = eecs467_util.o
 
 BIN_IP = $(BIN_PATH)/ip
 BIN_IMAGE_PROCESSOR = $(BIN_PATH)/a2_image_to_arm_coord
-BIN_INVERSE_KINEMATICS = $(BIN_PATH)/a2_inverse_kinematics
+BIN_TIC_TAC_TOE = $(BIN_PATH)/tic_tac_toe
+#BIN_INVERSE_KINEMATICS = $(BIN_PATH)/a2_inverse_kinematics
 #BIN_EECS467_MAEBOT_EXAMPLE = $(BIN_PATH)/eecs467_maebot_example
 #BIN_EECS467_MAEBOT_VIDEO_TELOP = $(BIN_PATH)/eecs467_maebot_video_telop
 
-ALL = $(LIB_EECS467) $(BIN_IP) $(BIN_IMAGE_PROCESSOR) $(BIN_INVERSE_KINEMATICS)
+ALL = $(LIB_EECS467) $(BIN_IP) $(BIN_IMAGE_PROCESSOR) \
+	  $(BIN_TIC_TAC_TOE)
 #$(BIN_EECS467_REXARM_EXAMPLE) \
 #      $(BIN_EECS467_MAEBOT_EXAMPLE) $(BIN_EECS467_MAEBOT_VIDEO_TELOP)
 
@@ -64,6 +66,10 @@ $(BIN_IMAGE_PROCESSOR): ImageProcessor.o driver.o $(LIB_EECS467) $(LIBDEPS)
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
 $(BIN_INVERSE_KINEMATICS): Arm.o test_5.o $(LIB_EECS467) $(LIBDEPS)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
+
+$(BIN_TIC_TAC_TOE): tic_tac_toe.o Arm.o ImageProcessor.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 

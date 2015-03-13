@@ -147,7 +147,7 @@ static inline double *doubles_copy(double *v, int len)
     if (!v)
         return NULL;
 
-    double *r = malloc(len * sizeof(double));
+    double *r = (double*) malloc(len * sizeof(double));
     memcpy(r, v, len * sizeof(double));
     return r;
 }

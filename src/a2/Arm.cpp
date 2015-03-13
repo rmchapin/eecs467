@@ -1,23 +1,89 @@
 #include "Arm.hpp"
 
-Arm::Arm(lcm::LCM *lcm_t) : lcm(lcm_t)
+Arm::Arm() : atNextPosition(false)
 {
-}
-
-Arm::Arm()
-{
+    pthread_mutex_init(&positionMutex, NULL);
+    pthread_mutex_init(&nextPositionMutex, NULL);
+    pthread_cond_init(&nextPositionCV, NULL);
 }
 
 Arm::~Arm()
 {
 }
 
-ArmPosition Arm::nextPose(coord ball_coord)
+void Arm::setLCM(lcm::LCM *lcm_t)
+{
+    lcm = lcm_t;
+}
+
+void Arm::setCommandChannel(std::string command_channel_)
+{
+    command_channel = command_channel_;
+}
+
+bool Arm::getAtNextPosition()
+{
+    return atNextPosition;
+}
+
+void Arm::updateCurrentPosition(double pos, int index)
+{
+    currentPosition[index] = pos;
+    pthread_mutex_lock(&nextPositionMutex);
+    if(withinBounds())
+    {
+        std::cout << "INSIDE BOUNDS!!" << std::endl;
+        atNextPosition = true;
+        pthread_cond_signal(&nextPositionCV);
+    }
+    pthread_mutex_unlock(&nextPositionMutex);
+}
+
+bool Arm::withinBounds()
+{
+    for(int i = 0; i < 6; i++)
+    {
+        if(!withinBoundsSingle(i))
+        {
+            std::cout << "servo" << i << "outside bounds!!" << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Arm::withinBoundsSingle(int i)
+{
+    return abs(nextPosition[i] - currentPosition[i]) < M_PI/30;
+}
+
+void Arm::homeServos(bool open)
+{
+    for(int i = 0; i < 5; i++)
+    {
+        nextPosition[i] = 0;
+    }
+
+    nextPosition[5] = (open ? open_fingers : close_fingers);
+}
+
+void Arm::closeHand()
+{
+    nextPosition[5] = close_fingers;
+}
+
+void Arm::openHand()
+{
+    nextPosition[5] = open_fingers;
+}
+
+void Arm::moveToNextPosition(coord ball_coord)
 {
     // figure out angle of ball and move there:
-    ArmPosition nextPose;
-    nextPose.theta0 = rotateBase(ball_coord);
-    nextPose.theta4 = -nextPose.theta0;
+    pthread_mutex_lock(&nextPositionMutex);
+    nextPosition[0] = rotateBase(ball_coord);
+    nextPosition[4] = -nextPosition[0];
+    pthread_mutex_unlock(&nextPositionMutex);
 
     // calculate R
     double R = dist(ball_coord) - 5;
@@ -38,9 +104,11 @@ ArmPosition Arm::nextPose(coord ball_coord)
         std::cout << "gamma: " << gamma << std::endl;
 
         // calculate servo angles
-        nextPose.theta1 = M_PI/2 - alpha - beta;
-        nextPose.theta2 = M_PI - gamma;
-        nextPose.theta3 = M_PI - nextPose.theta1 - nextPose.theta2;
+        pthread_mutex_lock(&nextPositionMutex);
+        nextPosition[1] = M_PI/2 - alpha - beta;
+        nextPosition[2] = M_PI - gamma;
+        nextPosition[3] = M_PI - nextPosition[1] - nextPosition[2];
+        pthread_mutex_unlock(&nextPositionMutex);
     }
     else
     {
@@ -55,13 +123,12 @@ ArmPosition Arm::nextPose(coord ball_coord)
         std::cout << "gamma: " << gamma << std::endl;
         
         // calculate servo angles
-        nextPose.theta1 = M_PI - beta - gamma;
-        nextPose.theta2 = 0;
-        nextPose.theta3 = alpha + beta;
+        pthread_mutex_lock(&nextPositionMutex);
+        nextPosition[1] = M_PI - beta - gamma;
+        nextPosition[2] = 0;
+        nextPosition[3] = alpha + beta;
+        pthread_mutex_unlock(&nextPositionMutex);
     }
-    nextPose.theta5 = 0;
-
-    return nextPose;
 }
 
 double Arm::rotateBase(coord next_coord)
@@ -73,4 +140,45 @@ double Arm::rotateBase(coord next_coord)
 double Arm::dist(coord next_coord)
 {
     return sqrt(next_coord.x*next_coord.x + next_coord.y*next_coord.y);
+}
+
+void Arm::publish()
+{
+    dynamixel_command_list_t cmds;
+    cmds.len = 6;
+    cmds.commands.reserve(6);
+    for(int i = 0; i < 6; i++)
+    {
+        cmds.commands[i].utime = utime_now ();
+        cmds.commands[i].position_radians = nextPosition[i];
+        cmds.commands[i].speed = MAX_SPEED;
+        cmds.commands[i].max_torque = MAX_TORQUE;
+    }
+    atNextPosition = false;
+    lcm->publish(command_channel.c_str(), &cmds);
+}
+
+void Arm::lockPositionMutex()
+{
+    pthread_mutex_lock(&positionMutex);
+}
+
+void Arm::unlockPositionMutex()
+{
+    pthread_mutex_unlock(&positionMutex);
+}
+
+void Arm::lockNextPositionMutex()
+{
+    pthread_mutex_lock(&nextPositionMutex);
+}
+
+void Arm::unlockNextPositionMutex()
+{
+    pthread_mutex_unlock(&nextPositionMutex);
+}
+
+void Arm::wait()
+{
+    pthread_cond_wait(&nextPositionCV, &nextPositionMutex);
 }

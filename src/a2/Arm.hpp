@@ -8,6 +8,10 @@
 #include "math/gsl_util_linalg.h"
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
+#include "pthread.h"
+#include "common/timestamp.h"
+#include <sys/select.h>
+#include <sys/time.h>
 
 #include <lcm/lcm-cpp.hpp>
 #include "lcmtypes/dynamixel_command_list_t.hpp"
@@ -18,16 +22,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-
-struct ArmPosition
-{
-    double theta0;
-    double theta1;
-    double theta2;
-    double theta3;
-    double theta4;
-    double theta5;
-};
+#include <string>
 
 struct coord
 {
@@ -38,19 +33,44 @@ struct coord
 class Arm
 {
     private:
-        ArmPosition currentPosition;
+        double currentPosition[6];
+        pthread_mutex_t positionMutex;
+        
+        double nextPosition[6];
+        pthread_mutex_t nextPositionMutex;
+        pthread_cond_t nextPositionCV;
+        bool atNextPosition;
+        
         dynamixel_command_list_t cmds;
 
         lcm::LCM *lcm;
+        std::string command_channel;
         
         double rotateBase(coord next_coord);
         double dist(coord next_coord);
     public:
-        Arm(lcm::LCM *lcm_t);
         Arm(); // for testing only
         ~Arm();
 
-        ArmPosition nextPose(coord ball_coord);
+        void moveToNextPosition(coord ball_coord);
+        void setLCM(lcm::LCM *lcm_t);
+        void setCommandChannel(std::string command_channel_);
+        void updateCurrentPosition(double pos, int index);
+        bool withinBounds();
+        bool withinBoundsSingle(int i);
+        void publish();
+
+        // movement functions
+        void homeServos(bool open);
+        bool getAtNextPosition();
+        void closeHand();
+        void openHand();
+
+        void lockPositionMutex();
+        void unlockPositionMutex();
+        void lockNextPositionMutex();
+        void unlockNextPositionMutex();
+        void wait();
 };
 
 #endif
