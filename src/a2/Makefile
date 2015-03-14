@@ -40,16 +40,13 @@ LIB_EECS467 = $(LIB_PATH)/libeecs467.a
 LIBEECS467_OBJS = eecs467_util.o
 
 BIN_IP = $(BIN_PATH)/ip
+BIN_BLOB = $(BIN_PATH)/blob
 BIN_IMAGE_PROCESSOR = $(BIN_PATH)/a2_image_to_arm_coord
 BIN_TIC_TAC_TOE = $(BIN_PATH)/tic_tac_toe
 #BIN_INVERSE_KINEMATICS = $(BIN_PATH)/a2_inverse_kinematics
-#BIN_EECS467_MAEBOT_EXAMPLE = $(BIN_PATH)/eecs467_maebot_example
-#BIN_EECS467_MAEBOT_VIDEO_TELOP = $(BIN_PATH)/eecs467_maebot_video_telop
 
 ALL = $(LIB_EECS467) $(BIN_IP) $(BIN_IMAGE_PROCESSOR) \
-	  $(BIN_TIC_TAC_TOE)
-#$(BIN_EECS467_REXARM_EXAMPLE) \
-#      $(BIN_EECS467_MAEBOT_EXAMPLE) $(BIN_EECS467_MAEBOT_VIDEO_TELOP)
+	  $(BIN_TIC_TAC_TOE) $(BIN_BLOB)
 
 all: $(ALL)
 
@@ -58,6 +55,10 @@ $(LIB_EECS467): $(LIBEECS467_OBJS) $(LIBDEPS)
 	@ar rc $@ $(LIBEECS467_OBJS)
 
 $(BIN_IP): ip.o $(LIB_EECS467) $(LIBDEPS)
+	@echo "\t$@"
+	@$(CC) -o $@ $^ $(LDFLAGS) $(LIB_EECS467)
+
+$(BIN_BLOB): blob.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CC) -o $@ $^ $(LDFLAGS) $(LIB_EECS467)
 
@@ -72,18 +73,6 @@ $(BIN_INVERSE_KINEMATICS): Arm.o test_5.o $(LIB_EECS467) $(LIBDEPS)
 $(BIN_TIC_TAC_TOE): tic_tac_toe.o Arm.o ImageProcessor.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
-
-#$(BIN_EECS467_REXARM_EXAMPLE): rexarm_example.o $(LIBDEPS)
-#	@echo "\t$@"
-#	@$(CC) -o $@ $^ $(LDFLAGS)
-
-#$(BIN_EECS467_MAEBOT_EXAMPLE): maebot_example.o $(LIBDEPS)
-#	@echo "\t$@"
-#	@$(CC) -o $@ $^ $(LDFLAGS)
-
-#$(BIN_EECS467_MAEBOT_VIDEO_TELOP): maebot_video_teleop.o $(LIBDEPS)
-#	@echo "\t$@"
-#	@$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
 	@rm -f *.o *~ *.a

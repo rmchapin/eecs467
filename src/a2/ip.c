@@ -566,9 +566,6 @@ main (int argc, char *argv[])
     eecs467_init (argc, argv);
     state_t *state = state_create ();
 
-
-    printf("here\n");
-
     // Parse arguments from the command line, showing the help screen if required
     state->gopt = getopt_create ();
     getopt_add_bool   (state->gopt,  'h', "help", 0, "Show help");
