@@ -340,7 +340,7 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
         }
         else if (state->mode == 2 && state->capture)
         {
-            if (state->cp_index < 5)
+            if (state->cp_index < 20)
             {
                 printf("point added to cp_coords\n");
                 state->cp_coords[state->cp_index] = state->last_click;
@@ -611,10 +611,8 @@ main (int argc, char *argv[])
 
     if (strncmp(getopt_get_string(state->gopt, "file"), "", 1))
     {
-        //printf("loading from file not currently supported\n");
-        //return -2;
-
         state->u32_im = image_u32_create_from_pnm(getopt_get_string(state->gopt, "file"));      
+        state->revert = image_u32_create_from_pnm(getopt_get_string(state->gopt, "file"));
         if (!state->u32_im)
         {
             printf("specified file fails to load or does not exist!\n");
