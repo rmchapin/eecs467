@@ -373,8 +373,8 @@ key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
             {
                 // replace \n with null character because fgets is terrible
                 int len = strlen(path);
-                path[len - 2] = '\0';
-                strcat(path, "pnm");
+                path[len - 1] = '\0';
+                strcat(path, ".pnm");
                 (void) image_u32_write_pnm(state->u32_im, path);
             }
         }
@@ -433,6 +433,27 @@ void * animate_thread (void *data)
     // when the window is closed/Ctrl+C is received.
     while (state->running) {
 
+        //continue displaying captured image
+        while (state->capture)
+        {
+            if (state->u32_im != NULL)
+            {
+                vx_object_t *vim = vxo_image_from_u32 (state->u32_im,
+                                                       VXO_IMAGE_FLIPY,
+                                                       VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
+
+                    // render the image centered at the origin and at a normalized scale of +/-1 unit in x-dir
+                    const double scale = 2./state->u32_im->width;
+                    vx_buffer_add_back (vx_world_get_buffer (state->vxworld, "image"),
+                                        vxo_chain (vxo_mat_scale3 (scale, scale, 1.0),
+                                                   vxo_mat_translate3 (-state->u32_im->width/2., -state->u32_im->height/2., 0.),
+                                                   vim));
+                    vx_buffer_swap (vx_world_get_buffer (state->vxworld, "image"));
+            }
+
+            usleep (1000000/fps);
+        }
+
         // Get the most recent camera frame and render it to screen.
         if (isrc != NULL) {
             image_source_data_t *frmd = calloc (1, sizeof(*frmd));
@@ -469,27 +490,6 @@ void * animate_thread (void *data)
             }
             fflush (stdout);
             isrc->release_frame (isrc, frmd);
-        }
-
-        //continue displaying captured image
-        while (state->capture)
-        {
-            if (state->u32_im != NULL)
-            {
-                vx_object_t *vim = vxo_image_from_u32 (state->u32_im,
-                                                       VXO_IMAGE_FLIPY,
-                                                       VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
-
-                    // render the image centered at the origin and at a normalized scale of +/-1 unit in x-dir
-                    const double scale = 2./state->u32_im->width;
-                    vx_buffer_add_back (vx_world_get_buffer (state->vxworld, "image"),
-                                        vxo_chain (vxo_mat_scale3 (scale, scale, 1.0),
-                                                   vxo_mat_translate3 (-state->u32_im->width/2., -state->u32_im->height/2., 0.),
-                                                   vim));
-                    vx_buffer_swap (vx_world_get_buffer (state->vxworld, "image"));
-            }
-
-            usleep (1000000/fps);
         }
 
         usleep (1000000/fps);
@@ -565,9 +565,6 @@ main (int argc, char *argv[])
 {
     eecs467_init (argc, argv);
     state_t *state = state_create ();
-
-
-    printf("here\n");
 
     // Parse arguments from the command line, showing the help screen if required
     state->gopt = getopt_create ();
