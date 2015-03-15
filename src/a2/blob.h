@@ -48,6 +48,15 @@ typedef struct {
 	double v;
 } HSV_p;
 
+typedef struct {
+    double Hmin;
+    double Hmax;
+    double Smin;
+    double Smax;
+    double Vmin;
+    double Vmax;
+} RANGE_t;
+
 HSV_p u32_pix_to_HSV(ABGR_p u32_in)
 {
 	HSV_p out;

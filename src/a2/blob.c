@@ -13,12 +13,17 @@ struct state {
     lcm_t *lcm;
     pthread_t lcm_thread_pid;
     bool trigger;
+    
+    RANGE_t cyan;
+    RANGE_t green;
+    RANGE_t red;
 
     // threads
     //pthread_t animate_thread;
 };
 
 state_t* state;
+char* inputs[] = {"cyan.txt", "green.txt", "red.txt"};
 
 void trigger_handler (const lcm_recv_buf_t *rbuf, const char *channel, const dynamixel_status_list_t *msg, void *user)
 {
@@ -135,7 +140,8 @@ main (int argc, char *argv[])
 
     pthread_create (&state->lcm_thread_pid, NULL, run_lcm, state);
 
-                printf("enter name for image:\n");
+            //write to file as test
+            /*printf("enter name for image:\n");
             char path[100];
             char *ret = fgets(path, 100, stdin);
             
@@ -146,14 +152,20 @@ main (int argc, char *argv[])
                 path[len - 1] = '\0';
                 strcat(path, ".pnm");
                 (void) image_u32_write_pnm(state->u32_im, path);
-            }
+            }*/
 
     while (1)
     {
     	if (state->trigger) //blob detection requested by AI
     	{
     		//create HSV image
+    		
     		//read bounds
+            int in = 0;
+            for (in = 0; in < 3; in++)
+            {
+                
+            }
 
     		//for each red, green, cyan
         		//create visited

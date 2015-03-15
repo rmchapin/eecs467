@@ -18,7 +18,7 @@ struct state {
 
     double Hmin, Hmax, Smin, Smax, Vmin, Vmax;
     pix_coord last_click;
-    pix_coord cp_coords[5];
+    pix_coord cp_coords[20];
     int cp_index;
     pix_coord mask_coords[2];
     int mask_index;
