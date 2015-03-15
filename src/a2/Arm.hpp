@@ -12,6 +12,8 @@
 #include "common/timestamp.h"
 #include <sys/select.h>
 #include <sys/time.h>
+#include "math/angle_functions.hpp"
+#include "math/fasttrig.h"
 
 #include <lcm/lcm-cpp.hpp>
 #include "lcmtypes/dynamixel_command_list_t.hpp"
@@ -23,6 +25,7 @@
 #include <fstream>
 #include <cmath>
 #include <string>
+#include <vector>
 
 struct coord
 {
@@ -46,26 +49,34 @@ class Arm
         lcm::LCM *lcm;
         std::string command_channel;
         
+        // helper functions 
         double rotateBase(coord next_coord);
         double dist(coord next_coord);
+        bool withinBounds();
+        bool withinBoundsSingle(int i);
     public:
         Arm(); // for testing only
         ~Arm();
 
-        void moveToNextPosition(coord ball_coord);
+        // getters and setters
         void setLCM(lcm::LCM *lcm_t);
         void setCommandChannel(std::string command_channel_);
+        bool getAtNextPosition();
+        
+        void calculateNextPosition(coord ball_coord, double *nextPose);
         void updateCurrentPosition(double pos, int index);
-        bool withinBounds();
-        bool withinBoundsSingle(int i);
         void publish();
 
         // movement functions
         void homeServos(bool open);
-        bool getAtNextPosition();
         void closeHand();
         void openHand();
+        void grabBall(coord ballCoord);
+        void moveToPosition(coord ballCoord);
+        void placeBall(coord ballCoord);
+        void waitForMove();
 
+        // concurrency functions
         void lockPositionMutex();
         void unlockPositionMutex();
         void lockNextPositionMutex();

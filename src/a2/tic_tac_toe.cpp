@@ -49,54 +49,6 @@ struct state
     ImageProcessor *ip;
 };
 
-void waitForMove(state_t *state)
-{
-    state->arm->lockNextPositionMutex();
-    while(!state->arm->getAtNextPosition())
-    {
-        state->arm->wait();
-    }
-    state->arm->unlockNextPositionMutex();
-}
-
-void grabBall(state_t *state, coord ballCoord)
-{
-    // move to ball position
-    state->arm->moveToNextPosition(ballCoord);
-    state->arm->publish();
-    waitForMove(state);
-
-    // grab ball
-    state->arm->closeHand();
-    state->arm->publish();
-    waitForMove(state);
-
-    // TODO: move servo 1 first, then the rest of them
-    // return to home
-    state->arm->homeServos(false);
-    state->arm->publish();
-    waitForMove(state);
-}
-
-void placeBall(state_t *state, coord ballCoord)
-{
-    // move to ball position
-    state->arm->moveToNextPosition(ballCoord);
-    state->arm->publish();
-    waitForMove(state);
-
-    // drop ball
-    state->arm->openHand();
-    state->arm->publish();
-    waitForMove(state);
-    
-    // TODO: move servo 1 first, then the rest of them
-    // return to home
-    state->arm->homeServos(true);
-    state->arm->publish();
-    waitForMove(state);
-}
-
 void *
 command_loop (void *data)
 {
@@ -117,28 +69,28 @@ command_loop (void *data)
         }
         else {
             coord balls[9];
-            balls[0].x = ballx3; balls[0].y = bally3;
-            balls[1].x = ballx3; balls[1].y = bally2;
-            balls[2].x = ballx3; balls[2].y = bally1;
-            balls[3].x = ballx2; balls[3].y = bally3;
-            balls[4].x = ballx2; balls[4].y = bally2;
-            balls[5].x = ballx2; balls[5].y = bally1;
-            balls[6].x = ballx1; balls[6].y = bally3;
-            balls[7].x = ballx1; balls[7].y = bally2;
-            balls[8].x = ballx1; balls[8].y = bally1;
+            balls[0].x = ballx3; balls[0].y = bally3 - y_test_offset;
+            balls[1].x = ballx3; balls[1].y = bally2 - y_test_offset;
+            balls[2].x = ballx3; balls[2].y = bally1 - y_test_offset;
+            balls[3].x = ballx2; balls[3].y = bally3 - y_test_offset;
+            balls[4].x = ballx2; balls[4].y = bally2 - y_test_offset;
+            balls[5].x = ballx2; balls[5].y = bally1 - y_test_offset;
+            balls[6].x = ballx1; balls[6].y = bally3 - y_test_offset;
+            balls[7].x = ballx1; balls[7].y = bally2 - y_test_offset;
+            balls[8].x = ballx1; balls[8].y = bally1 - y_test_offset;
 
             // home servos slowly
             state->arm->homeServos(true);
             state->arm->publish();
-            waitForMove(state);
+            state->arm->waitForMove();
 
             for(int i = 0; i < 9; i++)
             {
                 // pick up ball
-                grabBall(state, balls[i]);
+                state->arm->grabBall(balls[i]);
 
                 // place ball
-                placeBall(state, balls[i]);
+                state->arm->placeBall(balls[i]);
             }
         }
 
