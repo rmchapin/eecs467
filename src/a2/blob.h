@@ -88,7 +88,7 @@ HSV_p u32_pix_to_HSV(ABGR_p u32_in)
     {
         // r = g = b = 0                        // s = 0, v is undefined
         out.s = 0.0;
-        out.h = NAN;                            // its now undefined
+        out.h = 0.0;                            // its now undefined
         return out;
     }
     

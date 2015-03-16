@@ -120,6 +120,10 @@ main (int argc, char *argv[])
             printf("specified file fails to load or does not exist!\n");
             return -2;
         }
+        else
+        {
+            printf("image loaded from %s\n", getopt_get_string(state->gopt, "file"));
+        }
     }
 
     //setup camera
@@ -141,20 +145,6 @@ main (int argc, char *argv[])
 
     pthread_create (&state->lcm_thread_pid, NULL, run_lcm, state);
 
-            //write to file as test
-            /*printf("enter name for image:\n");
-            char path[100];
-            char *ret = fgets(path, 100, stdin);
-            
-            if (ret == path)
-            {
-                // replace \n with null character because fgets is terrible
-                int len = strlen(path);
-                path[len - 1] = '\0';
-                strcat(path, ".pnm");
-                (void) image_u32_write_pnm(state->u32_im, path);
-            }*/
-
     //read mask
     FILE * fptr = fopen("mask.txt", "r");
     if (fptr == NULL)
@@ -168,6 +158,7 @@ main (int argc, char *argv[])
 
     int x_dim = mask_x2-mask_x1;
     int y_dim = mask_y2-mask_y1;
+    printf("x_dim: %d, y_dim: %d\n", x_dim, y_dim);
     printf("read mask.txt\n");
 
     if (!state->cam)
@@ -181,6 +172,7 @@ main (int argc, char *argv[])
             {
                 ABGR_p pixel_abgr;
                 uint32_t val = state->u32_im->buf[(mask_y1 + h)*state->u32_im->stride + (mask_x1 + g)];
+                //state->u32_im->buf[(mask_y1 + h)*state->u32_im->stride + (mask_x1 + g)] = 0xFFE600CB;
                 pixel_abgr.a = 0xFF & (val >> 24);
                 pixel_abgr.b = 0xFF & (val >> 16);
                 pixel_abgr.g = 0xFF & (val >> 8);
@@ -207,7 +199,12 @@ main (int argc, char *argv[])
         fclose(fptr);
     }
 
-    while (1)
+    for (in=0; in < 3; in++)
+    {
+        printf("bounds[%d]: %lf, %lf, %lf, %lf, %lf, %lf\n", in, state->bounds[in].Hmin, state->bounds[in].Hmax, state->bounds[in].Smin, state->bounds[in].Smax, state->bounds[in].Vmin, state->bounds[in].Vmax);
+    }
+
+    //while (1)
     {
     	int hz;
         hz = 10;
@@ -218,6 +215,8 @@ main (int argc, char *argv[])
 
             if (state->cam)
             {
+                printf("reading from camera\n");
+
                 // Get the most recent camera frame
                 if (isrc != NULL) {
                     image_source_data_t *frmd = calloc (1, sizeof(*frmd));
@@ -255,9 +254,10 @@ main (int argc, char *argv[])
             }
     		
             //for each cyan, green, red
-            for (in = 0; in < 3; in++)
+            for (in = 0; in < 3; in++)//1 for debugging 3; in++)
             {
-                state->record = malloc(x_dim*y_dim*sizeof(int));
+                printf("searching for color %d\n", in);
+                state->record = calloc(x_dim*y_dim, sizeof(int));
                 Stack *S = malloc(sizeof(Stack));
                 int blob_num = 1;
                 int x_avg = 0;
@@ -270,9 +270,12 @@ main (int argc, char *argv[])
                 {
                     for (g = 0; g < x_dim; g++)
                     {
+                        //printf("g: %d, h: %d\n", g, h);
+
                         //if not yet examined
                         if (state->record[(h*x_dim) + g] == 0)
                         {
+                            //printf("hsv val: %f, %f, %f\n", state->hsv_im[(h*x_dim) + g].h, state->hsv_im[(h*x_dim) + g].s, state->hsv_im[(h*x_dim) + g].v);
                             //if in the color range
                             if (within_range(state->bounds[in], state->hsv_im[(h*x_dim) + g]))
                             {
@@ -313,6 +316,7 @@ main (int argc, char *argv[])
                                                     //if in color range, push
                                                     if (within_range(state->bounds[in], state->hsv_im[((visit.y + m)*x_dim) + visit.x + n]))
                                                     {
+                                                        state->u32_im->buf[(mask_y1+visit.y+m)*state->u32_im->stride + (mask_x1+visit.x+n)] = 0xFFE600CB;
                                                         state->record[((visit.y + m)*x_dim) + visit.x + n] = blob_num;
                                                         pix_coord push;
                                                         push.x = visit.x + n;
@@ -341,12 +345,29 @@ main (int argc, char *argv[])
                                 x_avg = 0;
                                 y_avg = 0;
                             }
+                            else
+                            { 
+                                //printf("not in range\n");
+                            }
                         }
                     }
                 }
 
                 free(state->record);
                 free(S);
+                            //write to file as test
+            printf("enter name for image:\n");
+            char path[100];
+            char *ret = fgets(path, 100, stdin);
+            
+            if (ret == path)
+            {
+                // replace \n with null character because fgets is terrible
+                int len = strlen(path);
+                path[len - 1] = '\0';
+                strcat(path, ".pnm");
+                (void) image_u32_write_pnm(state->u32_im, path);
+            }
             }
    	
             //send lcm mesage blobdone
