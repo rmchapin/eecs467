@@ -355,20 +355,21 @@ main (int argc, char *argv[])
 
                 free(state->record);
                 free(S);
-                            //write to file as test
-            printf("enter name for image:\n");
-            char path[100];
-            char *ret = fgets(path, 100, stdin);
-            
-            if (ret == path)
-            {
-                // replace \n with null character because fgets is terrible
-                int len = strlen(path);
-                path[len - 1] = '\0';
-                strcat(path, ".pnm");
-                (void) image_u32_write_pnm(state->u32_im, path);
-            }
-            }
+
+				//write to output_ file
+				switch (in)
+				{
+					case 0:
+						(void) image_u32_write_pnm(state->u32_im, "output_cyan.pnm");
+					break;	
+					case 1:
+						(void) image_u32_write_pnm(state->u32_im, "output_green.pnm");
+					break;
+					case 2:
+						(void) image_u32_write_pnm(state->u32_im, "output_red.pnm");
+					break;
+				}      
+			}
    	
             //send lcm mesage blobdone
         }//if trigger
@@ -376,6 +377,8 @@ main (int argc, char *argv[])
         //printf("waiting for trigger\n");
         usleep (1000000/hz);
     }
+
+	//while(1) {}
 
     // Cleanup
     lcm_destroy (state->lcm);
