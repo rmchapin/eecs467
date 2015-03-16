@@ -35,6 +35,11 @@
 #include "lcmtypes/dynamixel_status_list_t.h"
 #include "lcmtypes/dynamixel_status_t.h"
 
+//#include "stack.h"
+
+#define STACK_MAX 1000000
+
+
 typedef struct {
 	unsigned char a;
 	unsigned char b;
@@ -56,6 +61,11 @@ typedef struct {
     double Vmin;
     double Vmax;
 } RANGE_t;
+
+typedef struct {
+    int x;
+    int y;
+} pix_coord;
 
 HSV_p u32_pix_to_HSV(ABGR_p u32_in)
 {
@@ -100,4 +110,52 @@ HSV_p u32_pix_to_HSV(ABGR_p u32_in)
         out.h += 360.0;
 
     return out;
+}
+
+struct Stack {
+    pix_coord data[STACK_MAX];
+    int size;
+};
+typedef struct Stack Stack;
+
+
+void Stack_Init(Stack *S)
+{
+    S->size = 0;
+}
+
+pix_coord Stack_Top(Stack *S)
+{
+    if (S->size == 0) {
+        printf("Error: stack empty\n");
+        exit(-4);
+        //return -1;
+    } 
+
+    return S->data[S->size-1];
+}
+
+void Stack_Push(Stack *S, pix_coord d)
+{
+    if (S->size < STACK_MAX)
+        S->data[S->size++] = d;
+    else
+        printf("Error: stack full\n");
+}
+
+void Stack_Pop(Stack *S)
+{
+    if (S->size == 0)
+        printf("Error: stack empty\n");
+    else
+        S->size--;
+}
+
+bool Stack_Empty(Stack *S)
+{
+    if (S->size == 0)
+    {
+        return true;
+    }
+    return false;
 }

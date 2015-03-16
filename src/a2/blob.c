@@ -7,23 +7,25 @@ struct state {
     getopt_t        *gopt;
 
     // image stuff
+    bool cam;
     char *img_url;
     image_u32_t *u32_im;
+    HSV_p *hsv_im;
 
     lcm_t *lcm;
     pthread_t lcm_thread_pid;
     bool trigger;
     
-    RANGE_t cyan;
-    RANGE_t green;
-    RANGE_t red;
+    RANGE_t bounds[3];
+    int *record;
+
+    pix_coord output[3][10];
 
     // threads
     //pthread_t animate_thread;
 };
 
 state_t* state;
-char* inputs[] = {"cyan.txt", "green.txt", "red.txt"};
 
 void trigger_handler (const lcm_recv_buf_t *rbuf, const char *channel, const dynamixel_status_list_t *msg, void *user)
 {
@@ -52,12 +54,24 @@ static void* run_lcm(void *input)
     return NULL;
 }
 
+bool within_range(RANGE_t range, HSV_p p)
+{
+    if ((p.h >= range.Hmin) && (p.h <= range.Hmax) &&
+        (p.s >= range.Smin) && (p.s <= range.Smax) &&
+        (p.v >= range.Vmin) && (p.v <= range.Vmax))
+        {
+            return true;
+        }
+    return false;
+}
+
 int
 main (int argc, char *argv[])
 {
     eecs467_init (argc, argv);
     state = calloc(1, sizeof(state_t));
     state->trigger = false;
+    state->cam = true;
     state->lcm = lcm_create (NULL);
 
     // Parse arguments from the command line, showing the help screen if required
@@ -99,6 +113,7 @@ main (int argc, char *argv[])
 
     if (strncmp(getopt_get_string(state->gopt, "file"), "", 1))
     {
+        state->cam = false;
         state->u32_im = image_u32_create_from_pnm(getopt_get_string(state->gopt, "file"));      
         if (!state->u32_im)
         {
@@ -106,37 +121,23 @@ main (int argc, char *argv[])
             return -2;
         }
     }
-    else
-    {
-    	//use camera if no file specified
-    	image_source_t *isrc = image_source_open (state->img_url);
 
-	    if (isrc == NULL)
-	        printf ("Error opening device.\n");
-	    else {
-	        // Print image format
-	        image_source_format_t ifmt;
-	        isrc->get_format (isrc, 0, &ifmt);
-	        printf ("%3d: %4d x %4d (%s)\n",
-	                    0, ifmt.width, ifmt.height, ifmt.format);
-	        isrc->start (isrc);
-	    }
+    //setup camera
+    image_source_t *isrc = image_source_open (state->img_url);
 
-	    image_source_format_t ifmt;
-	    isrc->get_format (isrc, 0, &ifmt);
-
-	    // Get the most recent camera frame
-	    if (isrc != NULL) {
-	        image_source_data_t *frmd = calloc (1, sizeof(*frmd));
-	        int res = isrc->get_frame (isrc, frmd);
-	        if (res < 0)
-	            printf ("get_frame fail: %d\n", res);
-	        else
-	        {
-	            state->u32_im = image_convert_u32 (frmd);
-	        }
-	    }
+    if (isrc == NULL)
+        printf ("Error opening device.\n");
+    else {
+        // Print image format
+        image_source_format_t ifmt;
+        isrc->get_format (isrc, 0, &ifmt);
+        printf ("%3d: %4d x %4d (%s)\n",
+                    0, ifmt.width, ifmt.height, ifmt.format);
+        isrc->start (isrc);
     }
+
+    image_source_format_t ifmt;
+    isrc->get_format (isrc, 0, &ifmt);
 
     pthread_create (&state->lcm_thread_pid, NULL, run_lcm, state);
 
@@ -154,30 +155,205 @@ main (int argc, char *argv[])
                 (void) image_u32_write_pnm(state->u32_im, path);
             }*/
 
+    //read mask
+    FILE * fptr = fopen("mask.txt", "r");
+    if (fptr == NULL)
+    {
+        printf("mask.txt does not exist, or could not be opened\n");
+        exit(-2);
+    }
+    int mask_x1, mask_x2, mask_y1, mask_y2;
+    fscanf(fptr, "%d %d %d %d", &mask_x1, &mask_y1, &mask_x2, &mask_y2);
+    fclose(fptr);
+
+    int x_dim = mask_x2-mask_x1;
+    int y_dim = mask_y2-mask_y1;
+    printf("read mask.txt\n");
+
+    if (!state->cam)
+    {
+        //create HSV image
+        state->hsv_im = malloc(x_dim*y_dim*sizeof(HSV_p));
+        int g, h;
+        for (h = 0; h < y_dim; h++)
+        {
+            for (g = 0; g < x_dim; g++)
+            {
+                ABGR_p pixel_abgr;
+                uint32_t val = state->u32_im->buf[(mask_y1 + h)*state->u32_im->stride + (mask_x1 + g)];
+                pixel_abgr.a = 0xFF & (val >> 24);
+                pixel_abgr.b = 0xFF & (val >> 16);
+                pixel_abgr.g = 0xFF & (val >> 8);
+                pixel_abgr.r = 0xFF & val;
+                  
+                state->hsv_im[(h*x_dim) + g] = u32_pix_to_HSV(pixel_abgr);
+            }
+        }
+        printf("created HSV\n");
+    }
+
+    //read bounds
+    char* inputs[] = {"cyan.txt", "green.txt", "red.txt"};
+    int in = 0;
+    for (in = 0; in < 3; in++)
+    {
+        fptr = fopen(inputs[in], "r");
+        if (fptr == NULL)
+        {
+            printf("%s does not exist, or could not be opened\n", inputs[in]);
+            exit(-3);
+        }
+        fscanf(fptr, "%lf %lf %lf %lf %lf %lf", &state->bounds[in].Hmin, &state->bounds[in].Hmax, &state->bounds[in].Smin, &state->bounds[in].Smax, &state->bounds[in].Vmin, &state->bounds[in].Vmax);
+        fclose(fptr);
+    }
+
     while (1)
     {
-    	if (state->trigger) //blob detection requested by AI
+    	int hz;
+        hz = 10;
+
+        if (1) // 1 for testing(state->trigger) //blob detection requested by AI
     	{
-    		//create HSV image
+            //clear output
+
+            if (state->cam)
+            {
+                // Get the most recent camera frame
+                if (isrc != NULL) {
+                    image_source_data_t *frmd = calloc (1, sizeof(*frmd));
+                    int res = isrc->get_frame (isrc, frmd);
+                    if (res < 0)
+                        printf ("get_frame fail: %d\n", res);
+                    else
+                    {
+                        state->u32_im = image_convert_u32 (frmd);
+                    }
+                }
+
+                //create HSV image
+                if (state->hsv_im)
+                {
+                    free(state->hsv_im);
+                }
+
+                state->hsv_im = malloc(x_dim*y_dim*sizeof(HSV_p));
+                int g, h;
+                for (h = 0; h < y_dim; h++)
+                {
+                    for (g = 0; g < x_dim; g++)
+                    {
+                        ABGR_p pixel_abgr;
+                        uint32_t val = state->u32_im->buf[(mask_y1 + h)*state->u32_im->stride + (mask_x1 + g)];
+                        pixel_abgr.a = 0xFF & (val >> 24);
+                        pixel_abgr.b = 0xFF & (val >> 16);
+                        pixel_abgr.g = 0xFF & (val >> 8);
+                        pixel_abgr.r = 0xFF & val;
+                          
+                        state->hsv_im[(h*x_dim) + g] = u32_pix_to_HSV(pixel_abgr);
+                    }
+                }
+            }
     		
-    		//read bounds
-            int in = 0;
+            //for each cyan, green, red
             for (in = 0; in < 3; in++)
             {
-                
-            }
+                state->record = malloc(x_dim*y_dim*sizeof(int));
+                Stack *S = malloc(sizeof(Stack));
+                int blob_num = 1;
+                int x_avg = 0;
+                int y_avg = 0;
+                int count = 0;
 
-    		//for each red, green, cyan
-        		//create visited
-        		
-        		//pass 1
-        		//mark regions with numbers
-        		
-        		//pass 2
-        		//weigh regions
-        		//find center of mass for sufficiently large
-        		//write to file
-    	}
+                //traverse hsv image area
+                int g, h;
+                for (h = 0; h < y_dim; h++)
+                {
+                    for (g = 0; g < x_dim; g++)
+                    {
+                        //if not yet examined
+                        if (state->record[(h*x_dim) + g] == 0)
+                        {
+                            //if in the color range
+                            if (within_range(state->bounds[in], state->hsv_im[(h*x_dim) + g]))
+                            {
+                                printf("found pixel @ %d, %d\n", g, h);
+
+                                //mark visited, push
+                                state->record[(h*x_dim) + g] = blob_num;
+                                pix_coord push;
+                                push.x = g;
+                                push.y = h;
+                                Stack_Push(S, push);
+
+                                //still visiting current blob
+                                while (!Stack_Empty(S))
+                                {
+                                    //pop
+                                    pix_coord visit;
+                                    visit = Stack_Top(S);
+                                    Stack_Pop(S);
+
+                                    //increment counters
+                                    count++;
+                                    x_avg += visit.x;
+                                    y_avg += visit.y;
+
+                                    //check all neighbors
+                                    int n, m;
+                                    for (n = -1; n < 2; n++)
+                                    {
+                                        for (m = -1; m < 2; m++)
+                                        {
+                                            //bound checking, prevent segfaults
+                                            if ((visit.x + n >= 0) && (visit.x + n < x_dim) && (visit.y + m >= 0) && (visit.y + m < y_dim))
+                                            {
+                                                //if not yet visited
+                                                if (state->record[((visit.y + m)*x_dim) + visit.x + n] == 0)
+                                                {
+                                                    //if in color range, push
+                                                    if (within_range(state->bounds[in], state->hsv_im[((visit.y + m)*x_dim) + visit.x + n]))
+                                                    {
+                                                        state->record[((visit.y + m)*x_dim) + visit.x + n] = blob_num;
+                                                        pix_coord push;
+                                                        push.x = visit.x + n;
+                                                        push.y = visit.y + m;
+                                                        Stack_Push(S, push);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (count > 50)
+                                {
+                                    state->output[in][blob_num].x = x_avg / count;
+                                    state->output[in][blob_num].y = y_avg / count;
+                                    printf("blob %d of color %d found at %d,%d\n", blob_num, in, (x_avg / count) + mask_x1, (y_avg / count) + mask_y1);
+                                }
+                                else
+                                {
+                                    printf("count was only %d\n", count);
+                                }
+
+                                blob_num++;
+                                count = 0;
+                                x_avg = 0;
+                                y_avg = 0;
+                            }
+                        }
+                    }
+                }
+
+                free(state->record);
+                free(S);
+            }
+   	
+            //send lcm mesage blobdone
+        }//if trigger
+
+        //printf("waiting for trigger\n");
+        usleep (1000000/hz);
     }
 
     // Cleanup
