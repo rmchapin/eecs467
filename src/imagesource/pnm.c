@@ -71,7 +71,7 @@ pnm_create_from_file (const char *path)
         }
 
         case 6: {
-            pnm->buflen = pnm->width * pnm->height * 3;
+            pnm->buflen = pnm->width * pnm->height * 4;
             pnm->buf = malloc (pnm->buflen);
             size_t len = fread (pnm->buf, 1, pnm->buflen, f);
             if (len != pnm->buflen)

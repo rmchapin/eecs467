@@ -82,6 +82,10 @@ image_u32_create_from_pnm (const char *path)
             // Gray conversion for RGB is gray = (r + g + g + b)/4
             for (int y = 0; y < im->height; y++) {
                 for (int x = 0; x < im->width; x++) {
+                    /*int8_t r = pnm->buf[y*im->width*4 + 4*x+1];
+                    uint8_t g = pnm->buf[y*im->width*4 + 4*x+2];
+                    uint8_t b = pnm->buf[y*im->width*4 + 4*x+3];*/
+                    
                     uint8_t a = pnm->buf[y*im->width*4 + 4*x];
                     uint8_t r = pnm->buf[y*im->width*4 + 4*x+1];
                     uint8_t g = pnm->buf[y*im->width*4 + 4*x+2];
