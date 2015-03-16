@@ -86,10 +86,10 @@ image_u32_create_from_pnm (const char *path)
                     uint8_t g = pnm->buf[y*im->width*4 + 4*x+2];
                     uint8_t b = pnm->buf[y*im->width*4 + 4*x+3];*/
                     
-                    uint8_t a = 0xff;//pnm->buf[y*im->width*3 + 3*x];
-                    uint8_t r = pnm->buf[y*im->width*3 + 3*x];
-                    uint8_t g = pnm->buf[y*im->width*3 + 3*x+1];
-                    uint8_t b = pnm->buf[y*im->width*3 + 3*x+2];
+                    uint8_t a = pnm->buf[y*im->width*4 + 4*x];
+                    uint8_t r = pnm->buf[y*im->width*4 + 4*x+1];
+                    uint8_t g = pnm->buf[y*im->width*4 + 4*x+2];
+                    uint8_t b = pnm->buf[y*im->width*4 + 4*x+3];
 
                     im->buf[y*im->stride + x] = (a & 0xff) << 24 | (b & 0xff) << 16 | (g & 0xff) << 8 | r;
                 }
@@ -126,7 +126,7 @@ image_u32_write_pnm (const image_u32_t *im, const char *path)
             uint8_t b = (uint8_t)((abgr >> 16) & 0xff);
             uint8_t a = (uint8_t)((abgr >> 24) & 0xff);
 
-            //fwrite(&a, 1, 1, f);
+            fwrite(&a, 1, 1, f);
             fwrite(&r, 1, 1, f);
             fwrite(&g, 1, 1, f);
             fwrite(&b, 1, 1, f);
