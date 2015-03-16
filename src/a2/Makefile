@@ -42,11 +42,12 @@ LIBEECS467_OBJS = eecs467_util.o
 BIN_IP = $(BIN_PATH)/ip
 BIN_BLOB = $(BIN_PATH)/blob
 BIN_IMAGE_PROCESSOR = $(BIN_PATH)/a2_image_to_arm_coord
+BIN_BOARD_TEST = $(BIN_PATH)/a2_board_test
 BIN_TIC_TAC_TOE = $(BIN_PATH)/tic_tac_toe
 #BIN_INVERSE_KINEMATICS = $(BIN_PATH)/a2_inverse_kinematics
 
 ALL = $(LIB_EECS467) $(BIN_IP) $(BIN_IMAGE_PROCESSOR) \
-	  $(BIN_TIC_TAC_TOE) $(BIN_BLOB)
+	  $(BIN_TIC_TAC_TOE) $(BIN_BLOB) $(BIN_BOARD_TEST)
 
 all: $(ALL)
 
@@ -63,6 +64,10 @@ $(BIN_BLOB): blob.o $(LIB_EECS467) $(LIBDEPS)
 	@$(CC) -o $@ $^ $(LDFLAGS) $(LIB_EECS467)
 
 $(BIN_IMAGE_PROCESSOR): ImageProcessor.o driver.o $(LIB_EECS467) $(LIBDEPS)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
+
+$(BIN_BOARD_TEST): Board.o board_test.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 

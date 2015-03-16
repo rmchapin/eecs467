@@ -1,5 +1,5 @@
-#ifndef ARM_HPP
-#define ARM_HPP
+#ifndef _ARM_HPP_
+#define _ARM_HPP_
 
 #include "MagicNumbers.hpp"
 #include "math/gsl_util_matrix.h"
