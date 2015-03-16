@@ -65,6 +65,8 @@ HSV_p u32_pix_to_HSV(ABGR_p u32_in)
 	HSV_p out;
 	double min, max, delta;
 
+    //printf("R: %d, G: %d, B: %d\n", u32_in.r, u32_in.g, u32_in.b);
+
     min = u32_in.r < u32_in.g ? u32_in.r : u32_in.g;
     min = min  < u32_in.b ? min  : u32_in.b;
     

@@ -18,7 +18,7 @@ struct state {
 
     double Hmin, Hmax, Smin, Smax, Vmin, Vmax;
     pix_coord last_click;
-    pix_coord cp_coords[20];
+    pix_coord cp_coords[100];
     int cp_index;
     pix_coord mask_coords[2];
     int mask_index;
@@ -100,16 +100,20 @@ void mask(state_t *state)
 
 void process_cp(state_t *state)
 {
+    printf("start process_cp w/ index: %d\n", state->cp_index);
+    
     int m;
     for (m = 0; m < state->cp_index; m++)
     {
         //make rgba pixel
         ABGR_p pixel_abgr;
-        uint32_t val = state->revert->buf[(state->img_height - state->cp_coords[m].y) * state->revert->stride + state->cp_coords[m].x];
+        uint32_t val = state->revert->buf[(state->revert->height - state->cp_coords[m].y) * state->revert->stride + state->cp_coords[m].x];
         pixel_abgr.a = 0xFF & (val >> 24);
         pixel_abgr.b = 0xFF & (val >> 16);
         pixel_abgr.g = 0xFF & (val >> 8);
         pixel_abgr.r = 0xFF & val;
+        
+        printf("pixel_rgb has values: %d, %d, %d\n", pixel_abgr.r, pixel_abgr.g, pixel_abgr.b);
         
         //convert to hsv and update bounds
         HSV_p pixel_hsv;
@@ -140,6 +144,8 @@ void process_cp(state_t *state)
         }
     }
     
+    printf("Hmin %f, Hmax %f, Smin %f, Smax %f, Vmin %f, Vmax %f\n", state->Hmin, state->Hmax, state->Smin, state->Smax, state->Vmin, state->Vmax);
+    
     //update image with hsv bounds
     int p, q;
     for (p = 0; p < state->img_height; p++)
@@ -148,7 +154,7 @@ void process_cp(state_t *state)
         {
             //make rgba pixel
             ABGR_p pixel_abgr;
-            uint32_t val = state->revert->buf[(state->img_height - p) * state->revert->stride + q];
+            uint32_t val = state->revert->buf[(state->revert->height - p) * state->revert->stride + q];
             pixel_abgr.a = 0xFF & (val >> 24);
             pixel_abgr.b = 0xFF & (val >> 16);
             pixel_abgr.g = 0xFF & (val >> 8);
@@ -157,12 +163,12 @@ void process_cp(state_t *state)
             HSV_p pixel_hsv;
             pixel_hsv = u32_pix_to_HSV(pixel_abgr);
 
-            if ((pixel_hsv.h >= state->Hmin) && 
+            /*if ((pixel_hsv.h >= state->Hmin) && 
                 (pixel_hsv.h <= state->Hmax) &&
                 (pixel_hsv.s >= state->Smin) &&
                 (pixel_hsv.s <= state->Smax) &&
                 (pixel_hsv.v >= state->Vmin) &&
-                (pixel_hsv.v <= state->Vmax))
+                (pixel_hsv.v <= state->Vmax))*/
             {
                 state->u32_im->buf[(state->img_height - p) * state->revert->stride + q] = 0xFFE600CB;
             }
@@ -325,9 +331,9 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
         double ground[3];
         vx_ray3_intersect_xy (&ray, 0, ground);
 
-        state->last_click.x = (int) ((ground[0] + 1.0f) * 0.5f * state->img_width);
-        state->last_click.y = (int) ((((float)(state->img_height)/(float)(state->img_width)) - ground[1])* 0.5f * (float)(state->img_width));
-        state->last_click.y = state->img_height - state->last_click.y;
+        state->last_click.x = (int) ((ground[0] + 1.0f) * 0.5f * state->revert->width);
+        state->last_click.y = (int) ((((float)(state->revert->height)/(float)(state->revert->width)) - ground[1])* 0.5f * (float)(state->revert->width));
+        state->last_click.y = state->revert->height - state->last_click.y;
         printf("click registered at pix_coord: %d, %d\n", state->last_click.x, state->last_click.y);
 
         if (state->mode == 1 && state->capture)
@@ -340,12 +346,18 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
         }
         else if (state->mode == 2 && state->capture)
         {
-            if (state->cp_index < 20)
+            if (state->cp_index < 100)
             {
-                printf("point added to cp_coords\n");
-                state->cp_coords[state->cp_index] = state->last_click;
-                state->cp_index++;
-                process_cp(state);
+                if ((state->last_click.x >= 0) && (state->last_click.y >=0))
+                {
+                    if ((state->last_click.x < state->revert->width) && (state->last_click.y < state->revert->height))
+                    {
+                        printf("point added to cp_coords\n");
+                        state->cp_coords[state->cp_index] = state->last_click;
+                        state->cp_index++;
+                        process_cp(state);
+                    }
+                }
             }
         }
     }
