@@ -99,7 +99,7 @@ void mask(state_t *state)
 void process_cp(state_t *state)
 {  
     ABGR_p pixel_abgr;
-    uint32_t val = state->revert->buf[(state->cp_coords[state->cp_index-1].y * state->revert->width) + state->cp_coords[state->cp_index-1].x];
+    uint32_t val = state->revert->buf[(state->cp_coords[state->cp_index-1].y * state->revert->stride) + state->cp_coords[state->cp_index-1].x];
     pixel_abgr.a = 0xFF & (val >> 24);
     pixel_abgr.b = 0xFF & (val >> 16);
     pixel_abgr.g = 0xFF & (val >> 8);
@@ -141,7 +141,7 @@ void process_cp(state_t *state)
         {
             //make rgba pixel
             ABGR_p pixel_abgr;
-            uint32_t val = state->revert->buf[state->revert->width * p + q];
+            uint32_t val = state->revert->buf[state->revert->stride * p + q];
  
             pixel_abgr.a = 0xFF & (val >> 24);
             pixel_abgr.b = 0xFF & (val >> 16);
@@ -158,7 +158,7 @@ void process_cp(state_t *state)
                 (pixel_hsv.v >= state->Vmin) &&
                 (pixel_hsv.v <= state->Vmax))
             {
-                state->u32_im->buf[state->u32_im->width * p + q] = 0xFFE600CB;
+                state->u32_im->buf[state->u32_im->stride * p + q] = 0xFFE600CB;
             }
         }
     }
