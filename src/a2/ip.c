@@ -74,9 +74,9 @@ void mask(state_t *state)
 {
     image_u32_t * im = image_u32_copy(state->u32_im);
     int x1 = min(state->mask_coords[0].x, state->mask_coords[1].x);
-    int y1 = state->revert->height - max(state->mask_coords[0].y, state->mask_coords[1].y);
+    int y1 = min(state->mask_coords[0].y, state->mask_coords[1].y);
     int x2 = max(state->mask_coords[0].x, state->mask_coords[1].x);
-    int y2 = state->revert->height - min(state->mask_coords[0].y, state->mask_coords[1].y);
+    int y2 = max(state->mask_coords[0].y, state->mask_coords[1].y);
     int x, y;
     for (y = 0; y < im->height; y++) {
          for (x = 0; x < im->width; x++) {
@@ -387,11 +387,7 @@ key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
                 image_u32_destroy(state->u32_im);
             }
             state->u32_im = image_u32_copy(state->revert);
-            if (state->cp_index > 0)
-            {
-                state->cp_index--;
-            }
-            process_cp(state);
+            clear_all(state);
         }
     }
 
@@ -614,11 +610,6 @@ main (int argc, char *argv[])
         {
             printf("specified file fails to load or does not exist!\n");
             return -2;
-        }
-        else
-        {
-            printf("image loaded with dims: %d, %d, %d\n", state->u32_im->height, state->u32_im->width, state->u32_im->stride);
-            printf("revert loaded with dims: %d, %d, %d\n", state->revert->height, state->revert->width, state->revert->stride);
         }
 
         state->capture = 1;
