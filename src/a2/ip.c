@@ -27,8 +27,6 @@ struct state {
 
     // image stuff
     char *img_url;
-    int img_height;
-    int img_width;
 
     // vx stuff
     vx_application_t    vxapp;
@@ -76,9 +74,9 @@ void mask(state_t *state)
 {
     image_u32_t * im = image_u32_copy(state->u32_im);
     int x1 = min(state->mask_coords[0].x, state->mask_coords[1].x);
-    int y1 = state->img_height - max(state->mask_coords[0].y, state->mask_coords[1].y);
+    int y1 = state->revert->height - max(state->mask_coords[0].y, state->mask_coords[1].y);
     int x2 = max(state->mask_coords[0].x, state->mask_coords[1].x);
-    int y2 = state->img_height - min(state->mask_coords[0].y, state->mask_coords[1].y);
+    int y2 = state->revert->height - min(state->mask_coords[0].y, state->mask_coords[1].y);
     int x, y;
     for (y = 0; y < im->height; y++) {
          for (x = 0; x < im->width; x++) {
@@ -99,62 +97,52 @@ void mask(state_t *state)
 }
 
 void process_cp(state_t *state)
-{
-    printf("start process_cp w/ index: %d\n", state->cp_index);
-    
-    int m;
-    for (m = 0; m < state->cp_index; m++)
+{  
+    ABGR_p pixel_abgr;
+    uint32_t val = state->revert->buf[(state->cp_coords[state->cp_index-1].y * state->revert->width) + state->cp_coords[state->cp_index-1].x];
+    pixel_abgr.a = 0xFF & (val >> 24);
+    pixel_abgr.b = 0xFF & (val >> 16);
+    pixel_abgr.g = 0xFF & (val >> 8);
+    pixel_abgr.r = 0xFF & val;
+      
+    //convert to hsv and update bounds
+    HSV_p pixel_hsv;
+    pixel_hsv = u32_pix_to_HSV(pixel_abgr);
+
+    if (state->Hmin == -1.0)
     {
-        //make rgba pixel
-        ABGR_p pixel_abgr;
-        uint32_t val = state->revert->buf[(state->revert->height - state->cp_coords[m].y) * state->revert->stride + state->cp_coords[m].x];
-        pixel_abgr.a = 0xFF & (val >> 24);
-        pixel_abgr.b = 0xFF & (val >> 16);
-        pixel_abgr.g = 0xFF & (val >> 8);
-        pixel_abgr.r = 0xFF & val;
-        
-        printf("pixel_rgb has values: %d, %d, %d\n", pixel_abgr.r, pixel_abgr.g, pixel_abgr.b);
-        
-        //convert to hsv and update bounds
-        HSV_p pixel_hsv;
-        pixel_hsv = u32_pix_to_HSV(pixel_abgr);
-
-        printf("pixel_hsv has values: %f, %f, %f\n", pixel_hsv.h, pixel_hsv.s, pixel_hsv.v);
-
-        if (state->Hmin == -1.0)
-        {
-            state->Hmin = state->Hmax = pixel_hsv.h;
-            state->Smin = state->Smax = pixel_hsv.s;
-            state->Vmin = state->Vmax = pixel_hsv.v;
-        }
-        else
-        {
-            if (pixel_hsv.h < state->Hmin)
-                state->Hmin = pixel_hsv.h;
-            if (pixel_hsv.h > state->Hmax)
-                state->Hmax = pixel_hsv.h;
-            if (pixel_hsv.s < state->Smin)
-                state->Smin = pixel_hsv.s;
-            if (pixel_hsv.s > state->Smax)
-                state->Smax = pixel_hsv.s;
-            if (pixel_hsv.v < state->Vmin)
-                state->Hmin = pixel_hsv.v;
-            if (pixel_hsv.v > state->Vmax)
-                state->Vmax = pixel_hsv.v;
-        }
+        state->Hmin = state->Hmax = pixel_hsv.h;
+        state->Smin = state->Smax = pixel_hsv.s;
+        state->Vmin = state->Vmax = pixel_hsv.v;
+    }
+    else
+    {
+        if (pixel_hsv.h < state->Hmin)
+            state->Hmin = pixel_hsv.h;
+        if (pixel_hsv.h > state->Hmax)
+            state->Hmax = pixel_hsv.h;
+        if (pixel_hsv.s < state->Smin)
+            state->Smin = pixel_hsv.s;
+        if (pixel_hsv.s > state->Smax)
+            state->Smax = pixel_hsv.s;
+        if (pixel_hsv.v < state->Vmin)
+            state->Vmin = pixel_hsv.v;
+        if (pixel_hsv.v > state->Vmax)
+            state->Vmax = pixel_hsv.v;
     }
     
     printf("Hmin %f, Hmax %f, Smin %f, Smax %f, Vmin %f, Vmax %f\n", state->Hmin, state->Hmax, state->Smin, state->Smax, state->Vmin, state->Vmax);
     
     //update image with hsv bounds
     int p, q;
-    for (p = 0; p < state->img_height; p++)
+    for (p = 0; p < state->revert->height; p++)
     {
-        for (q = 0; q < state->img_width; q++)
+        for (q = 0; q < state->revert->width; q++)
         {
             //make rgba pixel
             ABGR_p pixel_abgr;
-            uint32_t val = state->revert->buf[(state->revert->height - p) * state->revert->stride + q];
+            uint32_t val = state->revert->buf[state->revert->width * p + q];
+ 
             pixel_abgr.a = 0xFF & (val >> 24);
             pixel_abgr.b = 0xFF & (val >> 16);
             pixel_abgr.g = 0xFF & (val >> 8);
@@ -163,14 +151,14 @@ void process_cp(state_t *state)
             HSV_p pixel_hsv;
             pixel_hsv = u32_pix_to_HSV(pixel_abgr);
 
-            /*if ((pixel_hsv.h >= state->Hmin) && 
+            if ((pixel_hsv.h >= state->Hmin) && 
                 (pixel_hsv.h <= state->Hmax) &&
                 (pixel_hsv.s >= state->Smin) &&
                 (pixel_hsv.s <= state->Smax) &&
                 (pixel_hsv.v >= state->Vmin) &&
-                (pixel_hsv.v <= state->Vmax))*/
+                (pixel_hsv.v <= state->Vmax))
             {
-                state->u32_im->buf[(state->img_height - p) * state->revert->stride + q] = 0xFFE600CB;
+                state->u32_im->buf[state->u32_im->width * p + q] = 0xFFE600CB;
             }
         }
     }
@@ -333,7 +321,7 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
 
         state->last_click.x = (int) ((ground[0] + 1.0f) * 0.5f * state->revert->width);
         state->last_click.y = (int) ((((float)(state->revert->height)/(float)(state->revert->width)) - ground[1])* 0.5f * (float)(state->revert->width));
-        state->last_click.y = state->revert->height - state->last_click.y;
+        //state->last_click.y = state->revert->height - state->last_click.y;
         printf("click registered at pix_coord: %d, %d\n", state->last_click.x, state->last_click.y);
 
         if (state->mode == 1 && state->capture)
@@ -348,15 +336,14 @@ mouse_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_
         {
             if (state->cp_index < 100)
             {
-                if ((state->last_click.x >= 0) && (state->last_click.y >=0))
+                if ((state->last_click.x >= 0) && (state->last_click.x < state->revert->width) &&
+                    (state->last_click.y >=0) && (state->last_click.y < state->revert->height))
                 {
-                    if ((state->last_click.x < state->revert->width) && (state->last_click.y < state->revert->height))
-                    {
+
                         printf("point added to cp_coords\n");
                         state->cp_coords[state->cp_index] = state->last_click;
                         state->cp_index++;
                         process_cp(state);
-                    }
                 }
             }
         }
@@ -438,13 +425,11 @@ void * animate_thread (void *data)
 
     image_source_format_t ifmt;
     isrc->get_format (isrc, 0, &ifmt);
-    state->img_width  = ifmt.width;
-    state->img_height = ifmt.height;
 
     // Continue running until we are signaled otherwise. This happens
     // when the window is closed/Ctrl+C is received.
-    while (state->running) {
-
+    while (state->running)
+    {
         //continue displaying captured image
         while (state->capture)
         {
@@ -454,13 +439,13 @@ void * animate_thread (void *data)
                                                        VXO_IMAGE_FLIPY,
                                                        VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
 
-                    // render the image centered at the origin and at a normalized scale of +/-1 unit in x-dir
-                    const double scale = 2./state->u32_im->width;
-                    vx_buffer_add_back (vx_world_get_buffer (state->vxworld, "image"),
-                                        vxo_chain (vxo_mat_scale3 (scale, scale, 1.0),
-                                                   vxo_mat_translate3 (-state->u32_im->width/2., -state->u32_im->height/2., 0.),
-                                                   vim));
-                    vx_buffer_swap (vx_world_get_buffer (state->vxworld, "image"));
+                // render the image centered at the origin and at a normalized scale of +/-1 unit in x-dir
+                const double scale = 2./state->u32_im->width;
+                vx_buffer_add_back (vx_world_get_buffer (state->vxworld, "image"),
+                                    vxo_chain (vxo_mat_scale3 (scale, scale, 1.0),
+                                               vxo_mat_translate3 (-state->u32_im->width/2., -state->u32_im->height/2., 0.),
+                                               vim));
+                vx_buffer_swap (vx_world_get_buffer (state->vxworld, "image"));
             }
 
             usleep (1000000/fps);
@@ -630,6 +615,11 @@ main (int argc, char *argv[])
             printf("specified file fails to load or does not exist!\n");
             return -2;
         }
+        else
+        {
+            printf("image loaded with dims: %d, %d, %d\n", state->u32_im->height, state->u32_im->width, state->u32_im->stride);
+            printf("revert loaded with dims: %d, %d, %d\n", state->revert->height, state->revert->width, state->revert->stride);
+        }
 
         state->capture = 1;
     }
@@ -664,6 +654,7 @@ main (int argc, char *argv[])
     eecs467_gui_run (&state->vxapp, state->pg, 1024, 768);
 
     // Quit when GTK closes
+    state->capture = 0;
     state->running = 0;
     pthread_join (state->animate_thread, NULL);
 
