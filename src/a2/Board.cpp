@@ -13,8 +13,7 @@ Board::~Board()
 
 void Board::getCalibration(coord *data)
 {
-    // TODO: fix this
-    std::ifstream input("calibration_test2.txt");
+    std::ifstream input("calibration.txt");
     double x, y;
     for(int i = 0; i < 3; i++)
     {
@@ -25,8 +24,7 @@ void Board::getCalibration(coord *data)
 
 bool Board::withinBounds(int p1, int p2)
 {
-    // TODO: fix so that it adds and subtracts 60
-    return p1 < p2+30 && p1 > p2-30;
+    return p1 < p2+50 && p1 > p2-50;
 }
 
 int Board::getCornersIndex(int x, int y, coord *calibrationData)
@@ -74,19 +72,19 @@ void Board::getInput(coord *calibrationData, coord *corners, coord *greenBalls, 
             std::cout << "corner: " << x << ", " << y << std::endl;
             int cornersIndex = getCornersIndex(x, y, calibrationData);
             std::cout << "corners index: " << cornersIndex << std::endl;
-            //corners[cornersIndex] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            corners[cornersIndex] = {x, y};
+            corners[cornersIndex] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //corners[cornersIndex] = {x, y};
         }
         else if(mode_switch == 1) // green balls
         {
-            //greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            greenBalls[index] = {x, y};
+            greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //greenBalls[index] = {x, y};
             index++;
         }
         else // mode_switch == 2 : red balls
         {
-            //redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            redBalls[index] = {x, y};
+            redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //redBalls[index] = {x, y};
             index++;
         }
     }
@@ -255,14 +253,14 @@ void Board::getBalls(coord *greenBalls, coord *redBalls, std::string filename)
         ip->calculate_arm_coords(point, world);
         if(mode_switch == 1) // green balls
         {
-            //greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            greenBalls[index] = {x, y};
+            greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //greenBalls[index] = {x, y};
             index++;
         }
         else // mode_switch == 2 : red balls
         {
-            //redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            redBalls[index] = {x, y};
+            redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //redBalls[index] = {x, y};
             index++;
         }
     }
