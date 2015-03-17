@@ -406,9 +406,9 @@ int Board::isWin(int sq)
 int Board::blocksWin(int sq)
 {
     if (playerColor == RED)
-        board[sq].ball = RED;
-    else
         board[sq].ball = GREEN;
+    else
+        board[sq].ball = RED;
     int ret = (gameOver() ? 4 : 0);
     board[sq].ball = YELLOW;
     return ret;
