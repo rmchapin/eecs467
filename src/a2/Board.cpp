@@ -111,41 +111,48 @@ void Board::boardInit(std::string filename)
     double boardy2 = (corners[1].y + corners[2].y)/2;
     double boardy1 = (corners[1].y + boardy2)/2;
     double boardy3 = (corners[2].y + boardy2)/2;
+	
+	std::cout << "boardx1: " << boardx1 << std::endl;
+	std::cout << "boardx2: " << boardx2 << std::endl;
+	std::cout << "boardx3: " << boardx3 << std::endl;
+	std::cout << "boardy1: " << boardy1 << std::endl;
+	std::cout << "boardy2: " << boardy2 << std::endl;
+	std::cout << "boardy3: " << boardy3 << std::endl;
 
-    coord min0 = {boardx1-15, boardy1-15};
-    coord max0 = {boardx1+15, boardy1+15};
+    coord min0 = {boardx1-17, boardy1-17};
+    coord max0 = {boardx1+17, boardy1+17};
     board[0] = {YELLOW, min0, max0};
 
-    coord min1 = {boardx1-15, boardy2-15};
-    coord max1 = {boardx1+15, boardy2+15};
+    coord min1 = {boardx1-17, boardy2-17};
+    coord max1 = {boardx1+17, boardy2+17};
     board[1] = {YELLOW, min1, max1};
 
-    coord min2 = {boardx1-15, boardy3-15};
-    coord max2 = {boardx1+15, boardy3+15};
+    coord min2 = {boardx1-17, boardy3-17};
+    coord max2 = {boardx1+17, boardy3+17};
     board[2] = {YELLOW, min2, max2};
 
-    coord min3 = {boardx2-15, boardy1-15};
-    coord max3 = {boardx2+15, boardy1+15};
+    coord min3 = {boardx2-17, boardy1-17};
+    coord max3 = {boardx2+17, boardy1+17};
     board[3] = {YELLOW, min3, max3};
 
-    coord min4 = {boardx2-15, boardy2-15};
-    coord max4 = {boardx2+15, boardy2+15};
+    coord min4 = {boardx2-17, boardy2-17};
+    coord max4 = {boardx2+17, boardy2+17};
     board[4] = {YELLOW, min4, max4};
 
-    coord min5 = {boardx2-15, boardy3-15};
-    coord max5 = {boardx2+15, boardy3+15};
+    coord min5 = {boardx2-17, boardy3-17};
+    coord max5 = {boardx2+17, boardy3+17};
     board[5] = {YELLOW, min5, max5};
 
-    coord min6 = {boardx3-15, boardy1-15};
-    coord max6 = {boardx3+15, boardy1+15};
+    coord min6 = {boardx3-17, boardy1-17};
+    coord max6 = {boardx3+17, boardy1+17};
     board[6] = {YELLOW, min6, max6};
 
-    coord min7 = {boardx3-15, boardy2-15};
-    coord max7 = {boardx3+15, boardy2+15};
+    coord min7 = {boardx3-17, boardy2-17};
+    coord max7 = {boardx3+17, boardy2+17};
     board[7] = {YELLOW, min7, max7};
 
-    coord min8 = {boardx3-15, boardy3-15};
-    coord max8 = {boardx3+15, boardy3+15};
+    coord min8 = {boardx3-17, boardy3-17};
+    coord max8 = {boardx3+17, boardy3+17};
     board[8] = {YELLOW, min8, max8};
 
     if(playerColor == GREEN)

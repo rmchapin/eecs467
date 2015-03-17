@@ -159,6 +159,11 @@ main (int argc, char *argv[])
     state_t *state = new state_t;
     state->arm = new Arm;
     state->ip = new ImageProcessor;
+    state->ip->read_from_file("calibration.txt");
+    state->ip->print_A();
+    state->ip->print_b();
+    state->ip->calculate_x();
+    state->ip->print_x();
     state->lcm = new lcm::LCM;
     state->cmds.len = NUM_SERVOS;
     state->cmds.commands.reserve(6);
