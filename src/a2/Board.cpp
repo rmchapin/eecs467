@@ -376,7 +376,8 @@ void Board::print()
 
 coord Board::nextPick()
 {
-    return freeBalls[0].position;
+	std::cout << "pick up ball at " << freeBalls[0].position.x << ", " << freeBalls[0].position.y << std::endl;
+	return freeBalls[0].position;
 }
 
 inline int Board::isCorner(int sq)
@@ -441,6 +442,10 @@ coord Board::nextPlace()
         std::cout << "game has no valid moves!" << std::endl;
         exit(-4);
     }
+	else
+	{
+		std::cout << "place ball at " << choose << std::endl;
+	}
 
     //coord is avg of min, max of square
     coord ret;

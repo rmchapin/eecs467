@@ -99,8 +99,10 @@ command_loop (void *data)
 			}
 			else
 			{
-				state->arm->grabBall(state->board->nextPick());
-				state->arm->placeBall(state->board->nextPlace());
+				state->board->nextPick();
+				state->board->nextPlace();
+				//state->arm->grabBall(state->board->nextPick());
+				//state->arm->placeBall(state->board->nextPlace());
 				state->turn_num++;
 			}
 			
@@ -160,8 +162,8 @@ main (int argc, char *argv[])
     state->cmds.commands.reserve(6);
 
     state->gopt = gopt;
-    state->command_channel = std::string("COMMAND_CHANNEL").append(state->am_i_red ? "_RED" : "_GREEN");
-    state->status_channel = std::string("STATUS_CHANNEL").append(state->am_i_red ? "_RED" : "_GREEN");
+    state->command_channel = std::string("COMMAND_CHANNEL");
+    state->status_channel = std::string("STATUS_CHANNEL");
 
 	if (getopt_get_bool(gopt, "red"))
 	{
