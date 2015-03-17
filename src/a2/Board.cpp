@@ -13,8 +13,7 @@ Board::~Board()
 
 void Board::getCalibration(coord *data)
 {
-    // TODO: fix this
-    std::ifstream input("calibration_test2.txt");
+    std::ifstream input("calibration.txt");
     double x, y;
     for(int i = 0; i < 3; i++)
     {
@@ -25,8 +24,7 @@ void Board::getCalibration(coord *data)
 
 bool Board::withinBounds(int p1, int p2)
 {
-    // TODO: fix so that it adds and subtracts 60
-    return p1 < p2+30 && p1 > p2-30;
+    return p1 < p2+50 && p1 > p2-50;
 }
 
 int Board::getCornersIndex(int x, int y, coord *calibrationData)
@@ -74,19 +72,19 @@ void Board::getInput(coord *calibrationData, coord *corners, coord *greenBalls, 
             std::cout << "corner: " << x << ", " << y << std::endl;
             int cornersIndex = getCornersIndex(x, y, calibrationData);
             std::cout << "corners index: " << cornersIndex << std::endl;
-            //corners[cornersIndex] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            corners[cornersIndex] = {x, y};
+            corners[cornersIndex] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //corners[cornersIndex] = {x, y};
         }
         else if(mode_switch == 1) // green balls
         {
-            //greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            greenBalls[index] = {x, y};
+            greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //greenBalls[index] = {x, y};
             index++;
         }
         else // mode_switch == 2 : red balls
         {
-            //redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            redBalls[index] = {x, y};
+            redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //redBalls[index] = {x, y};
             index++;
         }
     }
@@ -113,41 +111,48 @@ void Board::boardInit(std::string filename)
     double boardy2 = (corners[1].y + corners[2].y)/2;
     double boardy1 = (corners[1].y + boardy2)/2;
     double boardy3 = (corners[2].y + boardy2)/2;
+	
+	std::cout << "boardx1: " << boardx1 << std::endl;
+	std::cout << "boardx2: " << boardx2 << std::endl;
+	std::cout << "boardx3: " << boardx3 << std::endl;
+	std::cout << "boardy1: " << boardy1 << std::endl;
+	std::cout << "boardy2: " << boardy2 << std::endl;
+	std::cout << "boardy3: " << boardy3 << std::endl;
 
-    coord min0 = {boardx1-15, boardy1-15};
-    coord max0 = {boardx1+15, boardy1+15};
+    coord min0 = {boardx1-17, boardy1-17};
+    coord max0 = {boardx1+17, boardy1+17};
     board[0] = {YELLOW, min0, max0};
 
-    coord min1 = {boardx1-15, boardy2-15};
-    coord max1 = {boardx1+15, boardy2+15};
+    coord min1 = {boardx1-17, boardy2-17};
+    coord max1 = {boardx1+17, boardy2+17};
     board[1] = {YELLOW, min1, max1};
 
-    coord min2 = {boardx1-15, boardy3-15};
-    coord max2 = {boardx1+15, boardy3+15};
+    coord min2 = {boardx1-17, boardy3-17};
+    coord max2 = {boardx1+17, boardy3+17};
     board[2] = {YELLOW, min2, max2};
 
-    coord min3 = {boardx2-15, boardy1-15};
-    coord max3 = {boardx2+15, boardy1+15};
+    coord min3 = {boardx2-17, boardy1-17};
+    coord max3 = {boardx2+17, boardy1+17};
     board[3] = {YELLOW, min3, max3};
 
-    coord min4 = {boardx2-15, boardy2-15};
-    coord max4 = {boardx2+15, boardy2+15};
+    coord min4 = {boardx2-17, boardy2-17};
+    coord max4 = {boardx2+17, boardy2+17};
     board[4] = {YELLOW, min4, max4};
 
-    coord min5 = {boardx2-15, boardy3-15};
-    coord max5 = {boardx2+15, boardy3+15};
+    coord min5 = {boardx2-17, boardy3-17};
+    coord max5 = {boardx2+17, boardy3+17};
     board[5] = {YELLOW, min5, max5};
 
-    coord min6 = {boardx3-15, boardy1-15};
-    coord max6 = {boardx3+15, boardy1+15};
+    coord min6 = {boardx3-17, boardy1-17};
+    coord max6 = {boardx3+17, boardy1+17};
     board[6] = {YELLOW, min6, max6};
 
-    coord min7 = {boardx3-15, boardy2-15};
-    coord max7 = {boardx3+15, boardy2+15};
+    coord min7 = {boardx3-17, boardy2-17};
+    coord max7 = {boardx3+17, boardy2+17};
     board[7] = {YELLOW, min7, max7};
 
-    coord min8 = {boardx3-15, boardy3-15};
-    coord max8 = {boardx3+15, boardy3+15};
+    coord min8 = {boardx3-17, boardy3-17};
+    coord max8 = {boardx3+17, boardy3+17};
     board[8] = {YELLOW, min8, max8};
 
     if(playerColor == GREEN)
@@ -255,14 +260,14 @@ void Board::getBalls(coord *greenBalls, coord *redBalls, std::string filename)
         ip->calculate_arm_coords(point, world);
         if(mode_switch == 1) // green balls
         {
-            //greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            greenBalls[index] = {x, y};
+            greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //greenBalls[index] = {x, y};
             index++;
         }
         else // mode_switch == 2 : red balls
         {
-            //redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
-            redBalls[index] = {x, y};
+            redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            //redBalls[index] = {x, y};
             index++;
         }
     }
@@ -376,7 +381,8 @@ void Board::print()
 
 coord Board::nextPick()
 {
-    return freeBalls[0].position;
+	std::cout << "pick up ball at " << freeBalls[0].position.x << ", " << freeBalls[0].position.y << std::endl;
+	return freeBalls[0].position;
 }
 
 inline int Board::isCorner(int sq)
@@ -441,6 +447,10 @@ coord Board::nextPlace()
         std::cout << "game has no valid moves!" << std::endl;
         exit(-4);
     }
+	else
+	{
+		std::cout << "place ball at " << choose << std::endl;
+	}
 
     //coord is avg of min, max of square
     coord ret;

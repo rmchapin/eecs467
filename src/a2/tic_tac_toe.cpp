@@ -66,6 +66,8 @@ command_loop (void *data)
     state_t *state = (state_t *) data;
     const int hz = 10;
 
+	state->board->printInit();
+
     while (1)
 	{
         if (state->my_turn)
@@ -99,8 +101,10 @@ command_loop (void *data)
 			}
 			else
 			{
-				state->arm->grabBall(state->board->nextPick());
-				state->arm->placeBall(state->board->nextPlace());
+				state->board->nextPick();
+				state->board->nextPlace();
+				//state->arm->grabBall(state->board->nextPick());
+				//state->arm->placeBall(state->board->nextPlace());
 				state->turn_num++;
 			}
 			
@@ -155,13 +159,18 @@ main (int argc, char *argv[])
     state_t *state = new state_t;
     state->arm = new Arm;
     state->ip = new ImageProcessor;
+    state->ip->read_from_file("calibration.txt");
+    state->ip->print_A();
+    state->ip->print_b();
+    state->ip->calculate_x();
+    state->ip->print_x();
     state->lcm = new lcm::LCM;
     state->cmds.len = NUM_SERVOS;
     state->cmds.commands.reserve(6);
 
     state->gopt = gopt;
-    state->command_channel = std::string("COMMAND_CHANNEL").append(state->am_i_red ? "_RED" : "_GREEN");
-    state->status_channel = std::string("STATUS_CHANNEL").append(state->am_i_red ? "_RED" : "_GREEN");
+    state->command_channel = std::string("COMMAND_CHANNEL");
+    state->status_channel = std::string("STATUS_CHANNEL");
 
 	if (getopt_get_bool(gopt, "red"))
 	{
@@ -181,6 +190,7 @@ main (int argc, char *argv[])
 	}
 
 	state->board = new Board(state->ip, state->am_i_red);
+	state->board->boardInit("blob_output.txt");
 
     state->arm->setLCM(state->lcm);
     state->arm->setCommandChannel(state->command_channel);
