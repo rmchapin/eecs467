@@ -66,6 +66,8 @@ command_loop (void *data)
     state_t *state = (state_t *) data;
     const int hz = 10;
 
+	state->board->printInit();
+
     while (1)
 	{
         if (state->my_turn)
@@ -183,6 +185,7 @@ main (int argc, char *argv[])
 	}
 
 	state->board = new Board(state->ip, state->am_i_red);
+	state->board->boardInit("blob_output.txt");
 
     state->arm->setLCM(state->lcm);
     state->arm->setCommandChannel(state->command_channel);
