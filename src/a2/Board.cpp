@@ -4,7 +4,7 @@ std::string COLOR_NAMES[] = {"GREEN", "RED", "YELLOW"};
 
 Board::Board(ImageProcessor *ip_, bool red) : ip(ip_)
 {
-    playerColor = (red ? "RED" : "GREEN");
+    playerColor = (red ? RED : GREEN);
 }
 
 Board::~Board()
@@ -150,7 +150,7 @@ void Board::boardInit(std::string filename)
     coord max8 = {boardx3+15, boardy3+15};
     board[8] = {YELLOW, min8, max8};
 
-    if(playerColor == "GREEN")
+    if(playerColor == GREEN)
     {
         for(int i = 0; i < 5; i++)
         {
@@ -191,7 +191,7 @@ void Board::updateBoard(std::string filename)
         }
         else
         {
-            if(playerColor == "RED")
+            if(playerColor == RED)
             {
                 freeBalls[j].position = redBalls[i];
                 freeBalls[j].color = RED;
@@ -210,7 +210,7 @@ void Board::updateBoard(std::string filename)
         }
         else
         {
-            if(playerColor == "GREEN")
+            if(playerColor == GREEN)
             {
                 freeBalls[j].position = greenBalls[i];
                 freeBalls[j].color = GREEN;
@@ -270,10 +270,36 @@ void Board::getBalls(coord *greenBalls, coord *redBalls, std::string filename)
 
 bool Board::gameOver()
 {
-    return false;
+    if (numFreeBalls == 0)
+    {
+        std::cout << "no free balls!" << std::endl;
+        return true;
+    }
 
-    //if they won, or we won
-    //or if no free balls
+    for (int g = 0; g < 3; g++)
+    {
+        bool hor = true, vert = true;
+        for (int w = 0; w < 3; w++)
+        {
+            if (board[3*w + g].ball != playerColor)
+                vert = false;
+            if (board[3*g + w].ball != playerColor)
+                hor = false;
+        }
+        if (hor || vert)
+            return true;
+    }
+
+    bool diag1 = true, diag2 = true;
+    for (int d = 0; d < 3; d++)
+    {
+        if (board[4*d].ball != playerColor)
+            diag1 = false;
+        if (board[6 - 2*d].ball != playerColor)
+            diag2 = false;
+    }
+
+    return (diag1 || diag2);
 }
 
 void Board::clearBoard()
@@ -353,13 +379,72 @@ coord Board::nextPick()
     return freeBalls[0].position;
 }
 
+inline int Board::isCorner(int sq)
+{
+    if ((sq == 0) || (sq == 2) || (sq == 6) || (sq == 8))
+        return 1;
+    else
+        return 0;
+}
+
+inline int Board::isCenter(int sq)
+{
+    if (sq == 4)
+        return 2;
+    else
+        return 0;
+}
+
+int Board::isWin(int sq)
+{
+    board[sq].ball = playerColor;
+    int ret = (gameOver() ? 8 : 0);
+    board[sq].ball = YELLOW;
+    return ret;
+}
+
+int Board::blocksWin(int sq)
+{
+    if (playerColor == RED)
+        board[sq].ball = RED;
+    else
+        board[sq].ball = GREEN;
+    int ret = (gameOver() ? 4 : 0);
+    board[sq].ball = YELLOW;
+    return ret;
+}
+
 coord Board::nextPlace()
 {
-    //determine board square "s" for AI
+    int max_value = -1;
+    int choose = -1;
+    for (int f = 0; f < 9; f++)
+    {   
+        int value = 0;
+        if (board[f].ball == YELLOW) //if available
+        {
+            value += isWin(f);
+            value += blocksWin(f);
+            value += isCenter(f);
+            value += isCorner(f);
 
-    int s = 0;
+            if (value > max_value)
+            {
+                max_value = value;
+                choose = f;
+            }
+        }
+    }
+
+    if (max_value == -1)
+    {
+        std::cout << "game has no valid moves!" << std::endl;
+        exit(-4);
+    }
+
+    //coord is avg of min, max of square
     coord ret;
-    ret.x = 0.5*(board[s].min_coord.x + board[s].max_coord.x);
-    ret.y = 0.5*(board[s].min_coord.y + board[s].max_coord.y);
+    ret.x = 0.5*(board[choose].min_coord.x + board[choose].max_coord.x);
+    ret.y = 0.5*(board[choose].min_coord.y + board[choose].max_coord.y);
     return ret;
 }

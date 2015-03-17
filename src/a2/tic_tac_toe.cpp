@@ -104,6 +104,10 @@ command_loop (void *data)
 				state->turn_num++;
 			}
 			
+			std::cout << "make your move, HUMAN!" << std::endl;
+			std::string trash;
+			std::cin >> trash;
+			state->my_turn = true;
 		}
 	
         usleep (1000000/hz);

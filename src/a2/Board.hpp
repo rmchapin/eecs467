@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <string>
 
-enum Color{GREEN, RED, YELLOW};
+enum Color{GREEN = 0, RED = 1, YELLOW = -1};
 extern std::string COLOR_NAMES[];
 
 struct Ball
@@ -31,7 +31,7 @@ class Board
         Ball freeBalls[5];
         int numFreeBalls;
         ImageProcessor *ip;
-        std::string playerColor;
+        Color playerColor;
 
         void clearBoard();
         int findBoardIndex(coord ball);
@@ -50,6 +50,10 @@ class Board
         void print();
         Ball *getFreeBalls();
         coord nextPick();
+        inline int isCorner(int sq);
+        inline int isCenter(int sq);
+        int isWin(int sq);
+        int blocksWin(int sq);
         coord nextPlace();
 };
 
