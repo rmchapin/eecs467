@@ -38,6 +38,7 @@ class BlobLCMHandler
                                const std::string& channel,
                                const maebot_pose_t *msg)
         {
+            std::cout << "blob_finished received" << std::endl;
             *blob_finished = true;
         }
 };
@@ -61,7 +62,7 @@ class TurnLCMHandler
                                const std::string& channel,
                                const ttt_turn_t *msg)
         {
-			if ((red) && (msg->turn == *turn_no))
+            if ((red) && (msg->turn == *turn_no))
 			{            
 				*my_turn = true;
 			}

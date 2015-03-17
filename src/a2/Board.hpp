@@ -49,6 +49,8 @@ class Board
         void printInit();
         void print();
         Ball *getFreeBalls();
+        coord nextPick();
+        coord nextPlace();
 };
 
 #endif

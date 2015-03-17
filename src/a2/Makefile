@@ -75,7 +75,7 @@ $(BIN_INVERSE_KINEMATICS): Arm.o test_5.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(BIN_TIC_TAC_TOE): tic_tac_toe.o Arm.o ImageProcessor.o $(LIB_EECS467) $(LIBDEPS)
+$(BIN_TIC_TAC_TOE): tic_tac_toe.o Arm.o Board.o ImageProcessor.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 

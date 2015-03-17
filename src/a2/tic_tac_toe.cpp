@@ -23,6 +23,7 @@
 
 #include "MagicNumbers.hpp"
 #include "Arm.hpp"
+#include "Board.hpp"
 #include "ImageProcessor.hpp"
 #include "ArmHandlers.hpp"
 
@@ -40,7 +41,8 @@ struct state
     lcm::LCM *lcm;
     std::string command_channel;
     std::string status_channel;
-	std::string turn_channel;
+	std::string turn_send_channel;
+	std::string turn_rec_channel;
 
     pthread_t command_thread;
     pthread_t turn_thread;
@@ -62,12 +64,15 @@ void *
 command_loop (void *data)
 {
     state_t *state = (state_t *) data;
-    const int hz = 30;
+    const int hz = 10;
 
     while (1)
 	{
         if (state->my_turn)
 		{
+			std::cout << "it's our turn" << std::endl;
+			state->my_turn = false;
+
 			//trigger blob
 			maebot_pose_t send;
 			send.utime = utime_now();
@@ -83,7 +88,8 @@ command_loop (void *data)
 			state->blob_finished = false;
 
 			//board update
-			state->board->update("blob_output.txt");
+			state->board->updateBoard("blob_output.txt");
+			state->board->print();
 
 			//if board game over
 			if (state->board->gameOver())
@@ -95,7 +101,6 @@ command_loop (void *data)
 			{
 				state->arm->grabBall(state->board->nextPick());
 				state->arm->placeBall(state->board->nextPlace());
-				state->my_turn = false;
 				state->turn_num++;
 			}
 			
@@ -108,8 +113,10 @@ command_loop (void *data)
 }
 
 void *
-turn_loop (void *user)
+turn_loop (void *data)
 {
+	state_t *state = (state_t *) data;
+
 	const int hz = 20;
 
 	while (1)
@@ -117,7 +124,7 @@ turn_loop (void *user)
 		ttt_turn_t t;
 		t.utime = utime_now();
 		t.turn = state->turn_num;
-		state->lcm->publish(state->turn_channel.c_str(), &t);
+		state->lcm->publish(state->turn_send_channel.c_str(), &t);
 
 		usleep(1000000/hz);
 	}    
@@ -154,15 +161,19 @@ main (int argc, char *argv[])
 
 	if (getopt_get_bool(gopt, "red"))
 	{
+		std::cout << "player is RED" << std::endl;
 		state->am_i_red = true;
 		state->my_turn = true;
-		state->turn_channel = "RED_TURN";
+		state->turn_send_channel = "RED_TURN";
+		state->turn_rec_channel = "GREEN_TURN";
 	}
 	else
 	{
+		std::cout << "player is GREEN" << std::endl;
 		state->am_i_red = false;
 		state->my_turn = false;
-		state->turn_channel = "GREEN_TURN";
+		state->turn_send_channel = "GREEN_TURN";
+		state->turn_rec_channel = "RED_TURN";
 	}
 
 	state->board = new Board(state->ip, state->am_i_red);
@@ -172,6 +183,7 @@ main (int argc, char *argv[])
 
     if (getopt_get_bool (state->gopt, "idle"))
 	{
+        std::cout << "setting arm to idle..." << std::endl;
         for (int id = 0; id < NUM_SERVOS; id++)
 		{
             state->cmds.commands[id].utime = utime_now ();
@@ -195,7 +207,7 @@ main (int argc, char *argv[])
                           &blob_handler);
 
 	TurnLCMHandler turn_handler(&state->my_turn, state->am_i_red, &state->turn_num);
-    state->lcm->subscribe(state->turn_channel,
+    state->lcm->subscribe(state->turn_rec_channel,
                           &TurnLCMHandler::handleTurnMsg,
                           &turn_handler);
 
@@ -207,7 +219,7 @@ main (int argc, char *argv[])
 
     // Probably not needed, given how this operates
     pthread_join (state->command_thread, NULL);
-    pthread_join (state->decision_thread, NULL);
+    pthread_join (state->turn_thread, NULL);
 
     delete state;
     getopt_destroy (gopt);

@@ -29,6 +29,7 @@ state_t* state;
 
 void trigger_handler (const lcm_recv_buf_t *rbuf, const char *channel, const maebot_pose_t *msg, void *user)
 {
+    printf("lcm trigger received\n");
     state->trigger = true;
 }
 

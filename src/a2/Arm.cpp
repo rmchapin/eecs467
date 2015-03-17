@@ -10,6 +10,9 @@ Arm::Arm() : atNextPosition(false)
         currentPosition[i] = 0;
         nextPosition[i] = 0;
     }
+
+    //RMC - this removes warning at runtime
+    fasttrig_init();
 }
 
 Arm::~Arm()

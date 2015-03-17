@@ -271,6 +271,9 @@ void Board::getBalls(coord *greenBalls, coord *redBalls, std::string filename)
 bool Board::gameOver()
 {
     return false;
+
+    //if they won, or we won
+    //or if no free balls
 }
 
 void Board::clearBoard()
@@ -341,7 +344,22 @@ void Board::print()
     // print free balls
     for(int i = 0; i < numFreeBalls; i++)
     {
-        std::cout << "freeBalls[" << i << "]: (" << freeBalls[i].position.x << ", " << freeBalls[i].position.y << ")" << std::endl;
-        std::cout << "                        " << COLOR_NAMES[freeBalls[i].color] << std::endl;
+        std::cout << COLOR_NAMES[freeBalls[i].color] << " freeBalls[" << i << "]: (" << freeBalls[i].position.x << ", " << freeBalls[i].position.y << ")" << std::endl;
     }
+}
+
+coord Board::nextPick()
+{
+    return freeBalls[0].position;
+}
+
+coord Board::nextPlace()
+{
+    //determine board square "s" for AI
+
+    int s = 0;
+    coord ret;
+    ret.x = 0.5*(board[s].min_coord.x + board[s].max_coord.x);
+    ret.y = 0.5*(board[s].min_coord.y + board[s].max_coord.y);
+    return ret;
 }
