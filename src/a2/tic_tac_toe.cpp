@@ -14,6 +14,8 @@
 #include "lcmtypes/dynamixel_command_t.hpp"
 #include "lcmtypes/dynamixel_status_list_t.hpp"
 #include "lcmtypes/dynamixel_status_t.hpp"
+#include "lcmtypes/maebot_pose_t.hpp"
+#include "lcmtypes/ttt_turn_t.hpp"
 
 #include "common/getopt.h"
 #include "common/timestamp.h"
@@ -38,14 +40,21 @@ struct state
     lcm::LCM *lcm;
     std::string command_channel;
     std::string status_channel;
+	std::string turn_channel;
 
-    pthread_t status_thread;
     pthread_t command_thread;
-    pthread_t decision_thread;
+    pthread_t turn_thread;
 
     dynamixel_command_list_t cmds;
+
+	//control
+	int turn_num;
+	bool my_turn;
+	bool blob_finished;
+	bool am_i_red;
     
     Arm *arm;
+	Board *board;
     ImageProcessor *ip;
 };
 
@@ -55,45 +64,43 @@ command_loop (void *data)
     state_t *state = (state_t *) data;
     const int hz = 30;
 
-    while (1) {
-        // Send LCM commands to arm. Normally, you would update positions, etc,
-        // but here, we will just home the arm.
-        if (getopt_get_bool (state->gopt, "idle")) {
-            for (int id = 0; id < NUM_SERVOS; id++) {
-                state->cmds.commands[id].utime = utime_now ();
-                state->cmds.commands[id].position_radians = 0.0;
-                state->cmds.commands[id].speed = 0.0;
-                state->cmds.commands[id].max_torque = 0.0;
-            }
-            state->lcm->publish(state->command_channel.c_str(), &state->cmds);
-        }
-        else {
-            coord balls[9];
-            balls[0].x = ballx3; balls[0].y = bally3 - y_test_offset;
-            balls[1].x = ballx3; balls[1].y = bally2 - y_test_offset;
-            balls[2].x = ballx3; balls[2].y = bally1 - y_test_offset;
-            balls[3].x = ballx2; balls[3].y = bally3 - y_test_offset;
-            balls[4].x = ballx2; balls[4].y = bally2 - y_test_offset;
-            balls[5].x = ballx2; balls[5].y = bally1 - y_test_offset;
-            balls[6].x = ballx1; balls[6].y = bally3 - y_test_offset;
-            balls[7].x = ballx1; balls[7].y = bally2 - y_test_offset;
-            balls[8].x = ballx1; balls[8].y = bally1 - y_test_offset;
+    while (1)
+	{
+        if (state->my_turn)
+		{
+			//trigger blob
+			maebot_pose_t send;
+			send.utime = utime_now();
+			send.x = 0.0;
+			send.y = 0.0;
+			send.theta = 0.0;
+			state->lcm->publish("BLOB_TRIGGER", &send);
+			
+			while(!state->blob_finished)
+			{
+				//nothing
+			}
+			state->blob_finished = false;
 
-            // home servos slowly
-            state->arm->homeServos(true);
-            state->arm->publish();
-            state->arm->waitForMove();
+			//board update
+			state->board->update("blob_output.txt");
 
-            for(int i = 0; i < 9; i++)
-            {
-                // pick up ball
-                state->arm->grabBall(balls[i]);
-
-                // place ball
-                state->arm->placeBall(balls[i]);
-            }
-        }
-
+			//if board game over
+			if (state->board->gameOver())
+			{
+				std::cout << "game complete!" << std::endl;
+				exit(0);
+			}
+			else
+			{
+				state->arm->grabBall(state->board->nextPick());
+				state->arm->placeBall(state->board->nextPlace());
+				state->my_turn = false;
+				state->turn_num++;
+			}
+			
+		}
+	
         usleep (1000000/hz);
     }
 
@@ -101,9 +108,21 @@ command_loop (void *data)
 }
 
 void *
-decision_loop (void *user)
+turn_loop (void *user)
 {
-    return NULL;
+	const int hz = 20;
+
+	while (1)
+	{
+		ttt_turn_t t;
+		t.utime = utime_now();
+		t.turn = state->turn_num;
+		state->lcm->publish(state->turn_channel.c_str(), &t);
+
+		usleep(1000000/hz);
+	}    
+
+	return NULL;
 }
 
 // This subscribes to the status messages sent out by the arm, displaying servo
@@ -114,9 +133,8 @@ main (int argc, char *argv[])
 {
     getopt_t *gopt = getopt_create ();
     getopt_add_bool (gopt, 'h', "help", 0, "Show this help screen");
+	getopt_add_bool (gopt, 'r', "red", 0, "Am I red player?");
     getopt_add_bool (gopt, 'i', "idle", 0, "Command all servos to idle");
-    getopt_add_string (gopt, '\0', "status-channel", "ARM_STATUS", "LCM status channel");
-    getopt_add_string (gopt, '\0', "command-channel", "ARM_COMMAND", "LCM command channel");
 
     if (!getopt_parse (gopt, argc, argv, 1) || getopt_get_bool (gopt, "help")) {
         getopt_do_usage (gopt);
@@ -131,26 +149,63 @@ main (int argc, char *argv[])
     state->cmds.commands.reserve(6);
 
     state->gopt = gopt;
-    state->command_channel = std::string(getopt_get_string (gopt, "command-channel"));
-    state->status_channel = std::string(getopt_get_string (gopt, "status-channel"));
-    
+    state->command_channel = std::string("COMMAND_CHANNEL").append(state->am_i_red ? "_RED" : "_GREEN");
+    state->status_channel = std::string("STATUS_CHANNEL").append(state->am_i_red ? "_RED" : "_GREEN");
+
+	if (getopt_get_bool(gopt, "red"))
+	{
+		state->am_i_red = true;
+		state->my_turn = true;
+		state->turn_channel = "RED_TURN";
+	}
+	else
+	{
+		state->am_i_red = false;
+		state->my_turn = false;
+		state->turn_channel = "GREEN_TURN";
+	}
+
+	state->board = new Board(state->ip, state->am_i_red);
+
     state->arm->setLCM(state->lcm);
     state->arm->setCommandChannel(state->command_channel);
 
-    ArmLCMHandler lcm_handler(state->arm);
+    if (getopt_get_bool (state->gopt, "idle"))
+	{
+        for (int id = 0; id < NUM_SERVOS; id++)
+		{
+            state->cmds.commands[id].utime = utime_now ();
+            state->cmds.commands[id].position_radians = 0.0;
+            state->cmds.commands[id].speed = 0.0;
+            state->cmds.commands[id].max_torque = 0.0;
+		}
+	    state->lcm->publish(state->command_channel.c_str(), &state->cmds);
+		exit(0);
+	}
 
+    ArmLCMHandler arm_handler(state->arm);
     state->lcm->subscribe(state->status_channel,
                           &ArmLCMHandler::handleArmPosition,
-                          &lcm_handler);
-    
+                          &arm_handler);
+
+	state->blob_finished = false;    
+	BlobLCMHandler blob_handler(&state->blob_finished);
+    state->lcm->subscribe("BLOB_DONE",
+                          &BlobLCMHandler::handleBlobEnd,
+                          &blob_handler);
+
+	TurnLCMHandler turn_handler(&state->my_turn, state->am_i_red, &state->turn_num);
+    state->lcm->subscribe(state->turn_channel,
+                          &TurnLCMHandler::handleTurnMsg,
+                          &turn_handler);
+
     pthread_create (&state->command_thread, NULL, command_loop, state);
-    pthread_create (&state->decision_thread, NULL, decision_loop, state);
+    pthread_create (&state->turn_thread, NULL, turn_loop, state);
 
     // Loop forever
     while(state->lcm->handle() == 0);
 
     // Probably not needed, given how this operates
-    pthread_join (state->status_thread, NULL);
     pthread_join (state->command_thread, NULL);
     pthread_join (state->decision_thread, NULL);
 

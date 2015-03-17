@@ -26,4 +26,50 @@ class ArmLCMHandler
         }
 };
 
+class BlobLCMHandler
+{
+    private:
+        bool *blob_finished;
+
+    public:
+        BlobLCMHandler(bool *b) : blob_finished(b) {}
+        ~BlobLCMHandler() { }
+        void handleBlobEnd(const lcm::ReceiveBuffer *rbuf,
+                               const std::string& channel,
+                               const maebot_pose_t *msg)
+        {
+            *blob_finished = true;
+        }
+};
+
+class TurnLCMHandler
+{
+    private:
+		bool red;
+        bool *my_turn;
+		int *turn_no;
+
+    public:
+        TurnLCMHandler(bool *t, bool r, int *num_ptr)
+		{
+			my_turn = t;
+			red = r;
+			turn_no = num_ptr;
+		}
+        ~TurnLCMHandler() { }
+        void handleTurnMsg(const lcm::ReceiveBuffer *rbuf,
+                               const std::string& channel,
+                               const ttt_turn_t *msg)
+        {
+			if ((red) && (msg->turn == *turn_no))
+			{            
+				*my_turn = true;
+			}
+			else if (msg->turn > *turn_no)
+			{
+				*my_turn = true;
+			}
+        }
+};
+
 #endif

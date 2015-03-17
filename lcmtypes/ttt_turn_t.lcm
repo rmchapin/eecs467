@@ -1,0 +1,6 @@
+struct ttt_turn_t
+{
+	int64_t utime;
+	int32_t turn;
+}
+
