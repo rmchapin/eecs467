@@ -204,19 +204,17 @@ main (int argc, char *argv[])
         printf("bounds[%d]: %lf, %lf, %lf, %lf, %lf, %lf\n", in, state->bounds[in].Hmin, state->bounds[in].Hmax, state->bounds[in].Smin, state->bounds[in].Smax, state->bounds[in].Vmin, state->bounds[in].Vmax);
     }
 
-    //while (1)
+    while (1)
     {
     	int hz;
         hz = 10;
 
-        if (1) // 1 for testing(state->trigger) //blob detection requested by AI
+        if (state->trigger) //blob detection requested by AI
     	{
             //clear output
 
             if (state->cam)
             {
-                printf("reading from camera\n");
-
                 // Get the most recent camera frame
                 if (isrc != NULL) {
                     image_source_data_t *frmd = calloc (1, sizeof(*frmd));
@@ -254,7 +252,7 @@ main (int argc, char *argv[])
             }
     		
             //for each cyan, green, red
-            for (in = 0; in < 3; in++)//1 for debugging 3; in++)
+            for (in = 0; in < 3; in++)
             {
                 printf("searching for color %d\n", in);
                 state->record = calloc(x_dim*y_dim, sizeof(int));
@@ -270,12 +268,9 @@ main (int argc, char *argv[])
                 {
                     for (g = 0; g < x_dim; g++)
                     {
-                        //printf("g: %d, h: %d\n", g, h);
-
                         //if not yet examined
                         if (state->record[(h*x_dim) + g] == 0)
                         {
-                            //printf("hsv val: %f, %f, %f\n", state->hsv_im[(h*x_dim) + g].h, state->hsv_im[(h*x_dim) + g].s, state->hsv_im[(h*x_dim) + g].v);
                             //if in the color range
                             if (within_range(state->bounds[in], state->hsv_im[(h*x_dim) + g]))
                             {
@@ -335,19 +330,11 @@ main (int argc, char *argv[])
                                     state->output[in][blob_num].y = y_avg / count;
                                     printf("blob %d of color %d found at %d,%d\n", blob_num, in, (x_avg / count) + mask_x1, (y_avg / count) + mask_y1);
                                 }
-                                else
-                                {
-                                    printf("count was only %d\n", count);
-                                }
 
                                 blob_num++;
                                 count = 0;
                                 x_avg = 0;
                                 y_avg = 0;
-                            }
-                            else
-                            { 
-                                //printf("not in range\n");
                             }
                         }
                     }
@@ -360,13 +347,13 @@ main (int argc, char *argv[])
 				switch (in)
 				{
 					case 0:
-						(void) image_u32_write_pnm(state->u32_im, "output_cyan.pnm");
+						//(void) image_u32_write_pnm(state->u32_im, "output_cyan.pnm");
 					break;	
 					case 1:
-						(void) image_u32_write_pnm(state->u32_im, "output_green.pnm");
+						//(void) image_u32_write_pnm(state->u32_im, "output_green.pnm");
 					break;
 					case 2:
-						(void) image_u32_write_pnm(state->u32_im, "output_red.pnm");
+						(void) image_u32_write_pnm(state->u32_im, "output_blob.pnm");
 					break;
 				}      
 			}
@@ -374,11 +361,8 @@ main (int argc, char *argv[])
             //send lcm mesage blobdone
         }//if trigger
 
-        //printf("waiting for trigger\n");
         usleep (1000000/hz);
     }
-
-	//while(1) {}
 
     // Cleanup
     lcm_destroy (state->lcm);
