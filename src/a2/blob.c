@@ -27,7 +27,7 @@ struct state {
 
 state_t* state;
 
-void trigger_handler (const lcm_recv_buf_t *rbuf, const char *channel, const dynamixel_status_list_t *msg, void *user)
+void trigger_handler (const lcm_recv_buf_t *rbuf, const char *channel, const maebot_pose_t *msg, void *user)
 {
     state->trigger = true;
 }
@@ -35,10 +35,10 @@ void trigger_handler (const lcm_recv_buf_t *rbuf, const char *channel, const dyn
 static void* run_lcm(void *input)
 {
     state_t *state = input;
-    dynamixel_status_list_t_subscribe (state->lcm,
-                                       "BLOB_TRIGGGER",
-                                       trigger_handler,
-                                       state);
+    maebot_pose_t_subscribe (state->lcm,
+                             "BLOB_TRIGGER",
+                             trigger_handler,
+                             state);
     const int hz = 15;
     while (1) {
         // Set up the LCM file descriptor for waiting. This lets us monitor it
@@ -204,19 +204,26 @@ main (int argc, char *argv[])
         printf("bounds[%d]: %lf, %lf, %lf, %lf, %lf, %lf\n", in, state->bounds[in].Hmin, state->bounds[in].Hmax, state->bounds[in].Smin, state->bounds[in].Smax, state->bounds[in].Vmin, state->bounds[in].Vmax);
     }
 
-    //while (1)
+    while (1)
     {
     	int hz;
         hz = 10;
 
-        if (1) // 1 for testing(state->trigger) //blob detection requested by AI
+        if (state->trigger) //blob detection requested by AI
     	{
             //clear output
+			int k, t;
+			for (k = 0; k < 3; k++)
+			{
+				for (t = 0; t < 5; t++)
+				{
+					state->output[k][t].x = -1;
+					state->output[k][t].y = -1;
+				}
+			}
 
             if (state->cam)
             {
-                printf("reading from camera\n");
-
                 // Get the most recent camera frame
                 if (isrc != NULL) {
                     image_source_data_t *frmd = calloc (1, sizeof(*frmd));
@@ -254,15 +261,16 @@ main (int argc, char *argv[])
             }
     		
             //for each cyan, green, red
-            for (in = 0; in < 3; in++)//1 for debugging 3; in++)
+            for (in = 0; in < 3; in++)
             {
-                printf("searching for color %d\n", in);
+                //printf("searching for color %d\n", in);
                 state->record = calloc(x_dim*y_dim, sizeof(int));
                 Stack *S = malloc(sizeof(Stack));
                 int blob_num = 1;
                 int x_avg = 0;
                 int y_avg = 0;
                 int count = 0;
+				int store_index = 0;
 
                 //traverse hsv image area
                 int g, h;
@@ -270,17 +278,12 @@ main (int argc, char *argv[])
                 {
                     for (g = 0; g < x_dim; g++)
                     {
-                        //printf("g: %d, h: %d\n", g, h);
-
                         //if not yet examined
                         if (state->record[(h*x_dim) + g] == 0)
                         {
-                            //printf("hsv val: %f, %f, %f\n", state->hsv_im[(h*x_dim) + g].h, state->hsv_im[(h*x_dim) + g].s, state->hsv_im[(h*x_dim) + g].v);
                             //if in the color range
                             if (within_range(state->bounds[in], state->hsv_im[(h*x_dim) + g]))
                             {
-                                printf("found pixel @ %d, %d\n", g, h);
-
                                 //mark visited, push
                                 state->record[(h*x_dim) + g] = blob_num;
                                 pix_coord push;
@@ -331,23 +334,16 @@ main (int argc, char *argv[])
 
                                 if (count > 50)
                                 {
-                                    state->output[in][blob_num].x = x_avg / count;
-                                    state->output[in][blob_num].y = y_avg / count;
-                                    printf("blob %d of color %d found at %d,%d\n", blob_num, in, (x_avg / count) + mask_x1, (y_avg / count) + mask_y1);
-                                }
-                                else
-                                {
-                                    printf("count was only %d\n", count);
+                                    printf("blob %d of color %d found at %d,%d\n", store_index, in, (x_avg / count) + mask_x1, (y_avg / count) + mask_y1);
+                                    state->output[in][store_index].x = x_avg / count;
+                                    state->output[in][store_index].y = y_avg / count;
+									store_index++;
                                 }
 
                                 blob_num++;
                                 count = 0;
                                 x_avg = 0;
                                 y_avg = 0;
-                            }
-                            else
-                            { 
-                                //printf("not in range\n");
                             }
                         }
                     }
@@ -359,30 +355,58 @@ main (int argc, char *argv[])
 				//write to output_ file
 				switch (in)
 				{
-					case 0:
-						(void) image_u32_write_pnm(state->u32_im, "output_cyan.pnm");
-					break;	
-					case 1:
-						(void) image_u32_write_pnm(state->u32_im, "output_green.pnm");
-					break;
 					case 2:
-						(void) image_u32_write_pnm(state->u32_im, "output_red.pnm");
+						(void) image_u32_write_pnm(state->u32_im, "output_blob.pnm");
 					break;
-				}      
+				}		
 			}
-   	
+
+			//write output to file
+			FILE * fptr = fopen("blob_output.txt", "w");
+			if (fptr == NULL)
+			{
+	    		printf("blob_output.txt or could not be opened\n");
+	    		exit(-2);
+			}
+			else
+			{
+				int r, d, x, y;
+				r = d = 0;
+				while (r < 3)
+				{
+					fprintf(fptr, "#");				
+					while (d < 5)
+					{
+						x = state->output[r][d].x;
+						y = state->output[r][d].y;
+						
+						if ((x != -1) && (y != -1))
+						{
+							fprintf(fptr, " %d %d", x + mask_x1, y + mask_y1);							
+						}
+						d++;
+					}					
+
+					fprintf(fptr, "\n");
+					d = 0;
+					r++;
+				}
+			}
+			fclose(fptr);	
+
             //send lcm mesage blobdone
+			maebot_pose_t send;
+			send.utime = 0;
+    		send.x = 0.0;
+			send.y = 0.0;
+    		send.theta = 0.0;
+			maebot_pose_t_publish (state->lcm, "BLOB_DONE", &send);
+
+			state->trigger = false;
+
         }//if trigger
 
-        //printf("waiting for trigger\n");
         usleep (1000000/hz);
     }
 
-	//while(1) {}
-
-    // Cleanup
-    lcm_destroy (state->lcm);
-    if (state->u32_im != NULL)
-        image_u32_destroy(state->u32_im);
-    free(state);
 }
