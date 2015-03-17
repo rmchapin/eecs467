@@ -25,17 +25,16 @@ void ImageProcessor::read_from_file(const char *filename)
     for(int i = 0; i < 3; i++)
     {
         input >> x >> y;
-        std::cout << "X: " << x << "  Y: " << y << std::endl;
+        //std::cout << "X: " << x << "  Y: " << y << std::endl;
         set_im_coord(x, y, i);
     }
-    print_A();
+    //print_A();
     input.close();
 }
 
 void ImageProcessor::set_im_coord(double x, double y, int pos)
 {
     int index = 12*pos;
-    std::cout << "index: " << index << std::endl;
     A[index] = x;
     A[index+1] = y;
     A[index+2] = 1;

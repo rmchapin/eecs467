@@ -2,25 +2,117 @@
 
 std::string COLOR_NAMES[] = {"GREEN", "RED", "YELLOW"};
 
-Board::Board()
+Board::Board(ImageProcessor *ip_, bool red) : ip(ip_)
 {
+    playerColor = (red ? "RED" : "GREEN");
 }
 
 Board::~Board()
 {
 }
 
-
-void Board::boardInit(coord balls_[5], coord pos1, coord pos2, coord pos3, coord pos4, std::string color)
+void Board::getCalibration(coord *data)
 {
-    // figure out x and y coords of each square
-    double boardx2 = (pos1.x + pos4.x)/2;
-    double boardx1 = (pos1.x + boardx2)/2;
-    double boardx3 = (pos4.x + boardx2)/2;
+    // TODO: fix this
+    std::ifstream input("calibration_test2.txt");
+    double x, y;
+    for(int i = 0; i < 3; i++)
+    {
+        input >> x >> y;
+        data[i] = {x, y};
+    }
+}
 
-    double boardy2 = (pos1.y + pos2.y)/2;
-    double boardy1 = (pos2.y + boardy2)/2;
-    double boardy3 = (pos1.y + boardy2)/2;
+bool Board::withinBounds(int p1, int p2)
+{
+    // TODO: fix so that it adds and subtracts 60
+    return p1 < p2+30 && p1 > p2-30;
+}
+
+int Board::getCornersIndex(int x, int y, coord *calibrationData)
+{
+    for(int i = 0; i < 3; i++)
+    {
+        if(withinBounds(x, calibrationData[i].x) && withinBounds(y, calibrationData[i].y))
+        {
+            return i;
+        }
+    }
+    return 3;
+}
+
+void Board::getInput(coord *calibrationData, coord *corners, coord *greenBalls, coord *redBalls, std::string filename)
+{
+    std::ifstream input(filename.c_str());
+    std::string elt;
+    gsl_vector *world;
+    world = gsl_vector_alloc(3);
+    gsl_vector *point;
+    point = gsl_vector_alloc(3);
+    int mode_switch = 0;
+    int index = 0;
+    
+    input >> elt; // get first '#'
+    while(input >> elt)
+    {
+        if(elt == "#")
+        {
+            mode_switch++;
+            index = 0;
+            continue;
+        }
+        double x = atoi(elt.c_str());
+        input >> elt;
+        double y = atoi(elt.c_str());
+    
+        gsl_vector_set(point, 0, x);
+        gsl_vector_set(point, 1, y);
+        gsl_vector_set(point, 2, 1);
+        ip->calculate_arm_coords(point, world);
+        if(mode_switch == 0) // corners
+        {
+            std::cout << "corner: " << x << ", " << y << std::endl;
+            int cornersIndex = getCornersIndex(x, y, calibrationData);
+            std::cout << "corners index: " << cornersIndex << std::endl;
+            //corners[cornersIndex] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            corners[cornersIndex] = {x, y};
+        }
+        else if(mode_switch == 1) // green balls
+        {
+            //greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            greenBalls[index] = {x, y};
+            index++;
+        }
+        else // mode_switch == 2 : red balls
+        {
+            //redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            redBalls[index] = {x, y};
+            index++;
+        }
+    }
+}
+
+//void Board::boardInit(coord balls_[5], coord pos1, coord pos2, coord pos3, coord pos4, std::string color)
+void Board::boardInit(std::string filename)
+{
+    // grab calibration data
+    coord calibrationData[3];
+    getCalibration(calibrationData);
+    
+    // get positions from file
+    coord corners[4];
+    coord greenBalls[5];
+    coord redBalls[5];
+    getInput(calibrationData, corners, greenBalls, redBalls, filename);
+
+    // figure out x and y coords of each square
+    double boardx2 = (corners[1].x + corners[0].x)/2;
+    double boardx1 = (corners[1].x + boardx2)/2;
+    double boardx3 = (corners[0].x + boardx2)/2;
+
+    double boardy2 = (corners[1].y + corners[2].y)/2;
+    double boardy1 = (corners[1].y + boardy2)/2;
+    double boardy3 = (corners[2].y + boardy2)/2;
 
     coord min0 = {boardx1-15, boardy1-15};
     coord max0 = {boardx1+15, boardy1+15};
@@ -58,19 +150,19 @@ void Board::boardInit(coord balls_[5], coord pos1, coord pos2, coord pos3, coord
     coord max8 = {boardx3+15, boardy3+15};
     board[8] = {YELLOW, min8, max8};
 
-    if(color == "GREEN")
+    if(playerColor == "GREEN")
     {
         for(int i = 0; i < 5; i++)
         {
-            freeBalls[i].position = balls_[i];
+            freeBalls[i].position = greenBalls[i];
             freeBalls[i].color = GREEN;
         }
     }
-    else // if color == "RED"
+    else // if playerColor == "RED"
     {
         for(int i = 0; i < 5; i++)
         {
-            freeBalls[i].position = balls_[i];
+            freeBalls[i].position = redBalls[i];
             freeBalls[i].color = RED;
         }
     }
@@ -78,25 +170,50 @@ void Board::boardInit(coord balls_[5], coord pos1, coord pos2, coord pos3, coord
     numFreeBalls = 5;
 }
 
-void Board::updateBoard(Ball *balls_, int size, std::string color)
+void Board::updateBoard(std::string filename)
 {
-    // for each ball, update board
-    int j = 0; 
-    for(int i = 0; i < size; i++)
+    // clear board
+    clearBoard();
+    
+    // get positions from file
+    coord greenBalls[5];
+    coord redBalls[5];
+    getBalls(greenBalls, redBalls, filename);
+    
+    // update red balls
+    int j = 0;
+    for(int i = 0; i < 5; i++)
     {
-        //std::cout << "balls_[" << i << "]: (" << balls_[i].position.x << ", " << balls_[i].position.y << ")" << std::endl;
-        int board_index = findBoardIndex(balls_[i]);
+        int board_index = findBoardIndex(redBalls[i]);
         if(board_index != -1)
         {
-            board[board_index].ball = balls_[i].color;
+            board[board_index].ball = RED;
         }
         else
         {
-            //std::cout << "inside else, incrementing j" << std::endl;
-            if(color == COLOR_NAMES[balls_[i].color])
+            if(playerColor == "RED")
             {
-                freeBalls[j].position = balls_[i].position;
-                freeBalls[j].color = balls_[i].color;
+                freeBalls[j].position = redBalls[i];
+                freeBalls[j].color = RED;
+                j++;
+            }
+        }
+    }
+
+    // update green balls
+    for(int i = 0; i < 5; i++)
+    {
+        int board_index = findBoardIndex(greenBalls[i]);
+        if(board_index != -1)
+        {
+            board[board_index].ball = GREEN;
+        }
+        else
+        {
+            if(playerColor == "GREEN")
+            {
+                freeBalls[j].position = greenBalls[i];
+                freeBalls[j].color = GREEN;
                 j++;
             }
         }
@@ -104,14 +221,74 @@ void Board::updateBoard(Ball *balls_, int size, std::string color)
     numFreeBalls = j;
 }
 
-int Board::findBoardIndex(Ball ball)
+void Board::getBalls(coord *greenBalls, coord *redBalls, std::string filename)
+{
+    std::ifstream input(filename.c_str());
+    std::string elt;
+    gsl_vector *world;
+    world = gsl_vector_alloc(3);
+    gsl_vector *point;
+    point = gsl_vector_alloc(3);
+    int mode_switch = 0;
+    int index = 0;
+    
+    input >> elt; // get first '#'
+    while(input >> elt)
+    {
+        if(elt == "#")
+        {
+            mode_switch++;
+            index = 0;
+            continue;
+        }
+        if(mode_switch == 0) // corners
+        {
+            continue;
+        }
+        double x = atoi(elt.c_str());
+        input >> elt;
+        double y = atoi(elt.c_str());
+    
+        gsl_vector_set(point, 0, x);
+        gsl_vector_set(point, 1, y);
+        gsl_vector_set(point, 2, 1);
+        ip->calculate_arm_coords(point, world);
+        if(mode_switch == 1) // green balls
+        {
+            //greenBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            greenBalls[index] = {x, y};
+            index++;
+        }
+        else // mode_switch == 2 : red balls
+        {
+            //redBalls[index] = {gsl_vector_get(world, 0), gsl_vector_get(world, 1)};
+            redBalls[index] = {x, y};
+            index++;
+        }
+    }
+}
+
+bool Board::gameOver()
+{
+    return false;
+}
+
+void Board::clearBoard()
 {
     for(int i = 0; i < 9; i++)
     {
-        if(ball.position.x > board[i].min_coord.x &&
-           ball.position.x < board[i].max_coord.x &&
-           ball.position.y > board[i].min_coord.y &&
-           ball.position.y < board[i].max_coord.y)
+        board[i].ball = YELLOW;
+    }
+}
+
+int Board::findBoardIndex(coord ball)
+{
+    for(int i = 0; i < 9; i++)
+    {
+        if(ball.x > board[i].min_coord.x &&
+           ball.x < board[i].max_coord.x &&
+           ball.y > board[i].min_coord.y &&
+           ball.y < board[i].max_coord.y)
         {
             return i;
         }

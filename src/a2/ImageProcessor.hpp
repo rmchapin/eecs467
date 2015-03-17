@@ -12,6 +12,13 @@
 
 class ImageProcessor
 {
+    private:
+        double A[36];
+        double b[6];
+        gsl_vector *x;
+        gsl_matrix *T;
+        
+        void set_im_coord(double x, double y, int pos);
     public:
         ImageProcessor();
         ~ImageProcessor();
@@ -23,13 +30,6 @@ class ImageProcessor
         void print_x();
         void print_A();
         void print_b();
-    private:
-        double A[36];
-        double b[6];
-        gsl_vector *x;
-        gsl_matrix *T;
-        
-        void set_im_coord(double x, double y, int pos);
 };
 
 #endif

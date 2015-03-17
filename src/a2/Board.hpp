@@ -2,7 +2,10 @@
 #define _BOARD_HPP_
 
 #include "Arm.hpp"
+#include "ImageProcessor.hpp"
 #include <iostream>
+#include <fstream>
+#include <cstdlib>
 #include <string>
 
 enum Color{GREEN, RED, YELLOW};
@@ -27,12 +30,22 @@ class Board
         Square board[9];
         Ball freeBalls[5];
         int numFreeBalls;
-        int findBoardIndex(Ball ball);
+        ImageProcessor *ip;
+        std::string playerColor;
+
+        void clearBoard();
+        int findBoardIndex(coord ball);
+        void getCalibration(coord *data);
+        bool withinBounds(int p1, int p2);
+        int getCornersIndex(int x, int y, coord *calibrationData);
+        void getInput(coord *calibrationData, coord *corners, coord *greenBalls, coord *redBalls, std::string filename);
+        void getBalls(coord *greenBalls, coord *redBalls, std::string filename);
     public:
-        Board();
+        Board(ImageProcessor *ip_, bool red);
         ~Board();
-        void boardInit(coord balls[5], coord pos1, coord pos2, coord pos3, coord pos4, std::string color);
-        void updateBoard(Ball *balls, int size, std::string color);
+        void boardInit(std::string filename);
+        void updateBoard(std::string filename);
+        bool gameOver();
         void printInit();
         void print();
         Ball *getFreeBalls();

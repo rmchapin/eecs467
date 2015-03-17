@@ -67,7 +67,7 @@ $(BIN_IMAGE_PROCESSOR): ImageProcessor.o driver.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(BIN_BOARD_TEST): Board.o board_test.o $(LIB_EECS467) $(LIBDEPS)
+$(BIN_BOARD_TEST): ImageProcessor.o Board.o board_test.o $(LIB_EECS467) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
