@@ -30,10 +30,7 @@
 
 //lcm
 #include <lcm/lcm.h>
-#include "lcmtypes/dynamixel_command_list_t.h"
-#include "lcmtypes/dynamixel_command_t.h"
-#include "lcmtypes/dynamixel_status_list_t.h"
-#include "lcmtypes/dynamixel_status_t.h"
+#include "lcmtypes/maebot_pose_t.h"
 
 //#include "stack.h"
 
