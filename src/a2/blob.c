@@ -204,12 +204,12 @@ main (int argc, char *argv[])
         printf("bounds[%d]: %lf, %lf, %lf, %lf, %lf, %lf\n", in, state->bounds[in].Hmin, state->bounds[in].Hmax, state->bounds[in].Smin, state->bounds[in].Smax, state->bounds[in].Vmin, state->bounds[in].Vmax);
     }
 
-    while (1)
+    //while (1)
     {
     	int hz;
         hz = 10;
 
-        if (state->trigger) //blob detection requested by AI
+        if (1)//(state->trigger) //blob detection requested by AI
     	{
             //clear output
 
@@ -274,8 +274,6 @@ main (int argc, char *argv[])
                             //if in the color range
                             if (within_range(state->bounds[in], state->hsv_im[(h*x_dim) + g]))
                             {
-                                printf("found pixel @ %d, %d\n", g, h);
-
                                 //mark visited, push
                                 state->record[(h*x_dim) + g] = blob_num;
                                 pix_coord push;
