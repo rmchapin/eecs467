@@ -204,12 +204,12 @@ main (int argc, char *argv[])
         printf("bounds[%d]: %lf, %lf, %lf, %lf, %lf, %lf\n", in, state->bounds[in].Hmin, state->bounds[in].Hmax, state->bounds[in].Smin, state->bounds[in].Smax, state->bounds[in].Vmin, state->bounds[in].Vmax);
     }
 
-    //while (1)
+    while (1)
     {
     	int hz;
         hz = 10;
 
-        if (1)//(state->trigger) //blob detection requested by AI
+        if (state->trigger) //blob detection requested by AI
     	{
             //clear output
 			int k, t;
@@ -402,19 +402,11 @@ main (int argc, char *argv[])
     		send.theta = 0.0;
 			maebot_pose_t_publish (state->lcm, "BLOB_DONE", &send);
 
+			state->trigger = false;
+
         }//if trigger
 
         usleep (1000000/hz);
     }
 
-	while (1)
-	{
-		continue;
-	}
-
-    // Cleanup
-    lcm_destroy (state->lcm);
-    if (state->u32_im != NULL)
-        image_u32_destroy(state->u32_im);
-    free(state);
 }
