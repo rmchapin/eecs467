@@ -101,10 +101,10 @@ command_loop (void *data)
 			}
 			else
 			{
-				state->board->nextPick();
-				state->board->nextPlace();
-				//state->arm->grabBall(state->board->nextPick());
-				//state->arm->placeBall(state->board->nextPlace());
+				//state->board->nextPick();
+				//state->board->nextPlace();
+				state->arm->grabBall(state->board->nextPick());
+				state->arm->placeBall(state->board->nextPlace());
 				state->turn_num++;
 			}
 			
