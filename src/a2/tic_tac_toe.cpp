@@ -73,7 +73,13 @@ command_loop (void *data)
 
     while (1)
 	{
-        if (state->my_turn)
+		//remove this after testing
+		if (!state->am_i_red)
+		{
+			state->my_turn = true;
+		}
+        
+		if (state->my_turn)
 		{
 			std::cout << "it's our turn" << std::endl;
 			state->my_turn = false;

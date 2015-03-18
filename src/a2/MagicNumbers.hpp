@@ -18,7 +18,7 @@
 #define close_fingers 1.65
 #define open_fingers 1.05
 #define MAX_SPEED 0.05
-#define MAX_TORQUE 0.7
+#define MAX_TORQUE 0.8
 #define y_test_offset 15
 
 // x1 is closest to arm, y1 is bottom

@@ -179,6 +179,7 @@ void Board::updateBoard(std::string filename)
     // clear board
     clearBoard();
     freeBalls.clear();
+	numFreeBalls = 0;
     
     // get positions from file
     std::vector<coord> greenBalls;
@@ -199,6 +200,7 @@ void Board::updateBoard(std::string filename)
             {
 				Ball nextBall = {RED, redBalls[i]};
 				freeBalls.push_back(nextBall);
+				numFreeBalls++;
             }
         }
     }
@@ -217,12 +219,10 @@ void Board::updateBoard(std::string filename)
             {
 				Ball nextBall = {GREEN, greenBalls[i]};
 				freeBalls.push_back(nextBall);
+				numFreeBalls++;
             }
         }
     }
-
-    // update numFreeBalls
-	numFreeBalls = ((playerColor == GREEN) ? greenBalls.size() : redBalls.size());
 }
 
 void Board::getBalls(std::vector<coord>& greenBalls, std::vector<coord>& redBalls, std::string filename)
@@ -404,7 +404,7 @@ coord Board::nextPick()
 inline int Board::isCorner(int sq)
 {
     if ((sq == 0) || (sq == 2) || (sq == 6) || (sq == 8))
-        return 1;
+        return 2;
     else
         return 0;
 }
@@ -412,7 +412,7 @@ inline int Board::isCorner(int sq)
 inline int Board::isCenter(int sq)
 {
     if (sq == 4)
-        return 2;
+        return 1;
     else
         return 0;
 }
