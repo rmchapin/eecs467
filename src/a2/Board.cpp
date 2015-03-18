@@ -286,9 +286,9 @@ bool Board::gameOver()
         bool hor = true, vert = true;
         for (int w = 0; w < 3; w++)
         {
-            if (board[3*w + g].ball != playerColor)
+            if (board[3*w + g].ball != RED)
                 vert = false;
-            if (board[3*g + w].ball != playerColor)
+            if (board[3*g + w].ball != RED)
                 hor = false;
         }
         if (hor || vert)
@@ -298,13 +298,40 @@ bool Board::gameOver()
     bool diag1 = true, diag2 = true;
     for (int d = 0; d < 3; d++)
     {
-        if (board[4*d].ball != playerColor)
+        if (board[4*d].ball != RED)
             diag1 = false;
-        if (board[6 - 2*d].ball != playerColor)
+        if (board[6 - 2*d].ball != RED)
             diag2 = false;
     }
 
-    return (diag1 || diag2);
+    bool red_wins = (diag1 || diag2);
+
+    for (int g = 0; g < 3; g++)
+    {
+        bool thor = true, tvert = true;
+        for (int w = 0; w < 3; w++)
+        {
+            if (board[3*w + g].ball != GREEN)
+                tvert = false;
+            if (board[3*g + w].ball != GREEN)
+                thor = false;
+        }
+        if (thor || tvert)
+            return true;
+    }
+
+    bool tdiag1 = true, tdiag2 = true;
+    for (int d = 0; d < 3; d++)
+    {
+        if (board[4*d].ball != GREEN)
+            tdiag1 = false;
+        if (board[6 - 2*d].ball != GREEN)
+            tdiag2 = false;
+    }
+
+    bool green_wins = (tdiag1 || tdiag2);
+
+    return (red_wins || green_wins);
 }
 
 void Board::clearBoard()
