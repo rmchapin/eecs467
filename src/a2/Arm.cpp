@@ -217,12 +217,13 @@ void Arm::calculateNextPosition(coord ball_coord, double *nextPose, bool grab)
     double M = sqrt(R*R + (d4-d_1)*(d4-d_1));
     std::cout << "M: " << M << std::endl;
 
-    /*if(M < (d_2+d_3)) // if not reaching too far
-    {*/
+    if(M < (d_2+d_3)) // if not reaching too far
+    {
+		std::cout << "inside if" << std::endl;
         // calculate inner angles
         double alpha = atan2(d4-d_1, R);
-        double beta = facos((-d_3*d_3 + d_2*d_2 + M*M)/(2*d_2*M));
-        double gamma = facos((-M*M+d_2*d_2+d_3*d_3)/(2*d_2*d_3));
+        double beta = acos((-d_3*d_3 + d_2*d_2 + M*M)/(2*d_2*M));
+        double gamma = acos((-M*M+d_2*d_2+d_3*d_3)/(2*d_2*d_3));
 
         std::cout << "alpha: " << alpha << std::endl;
         std::cout << "beta:  " << beta << std::endl;
@@ -232,13 +233,13 @@ void Arm::calculateNextPosition(coord ball_coord, double *nextPose, bool grab)
         nextPose[1] = M_PI/2 - alpha - beta;
         nextPose[2] = M_PI - gamma;
         nextPose[3] = M_PI - nextPose[1] - nextPose[2];
-    /*}
+    }
     else
     {
         // calculate inner angles
         double f = sqrt(R*R + d_1*d_1);
-        double alpha = facos((-(d_2+d_3)*(d_2+d_3) + f*f + d_4*d_4)/(2*f*d_4));
-        double beta = facos((-d_4*d_4 + (d_2+d_3)*(d_2+d_3) + f*f)/(2*f*(d_2+d_3)));
+        double alpha = acos((-(d_2+d_3)*(d_2+d_3) + f*f + d4*d4)/(2*f*d4));
+        double beta = acos((-d4*d4 + (d_2+d_3)*(d_2+d_3) + f*f)/(2*f*(d_2+d_3)));
         double gamma = atan2(R, d_1);
 
         std::cout << "alpha: " << alpha << std::endl;
@@ -249,7 +250,7 @@ void Arm::calculateNextPosition(coord ball_coord, double *nextPose, bool grab)
         nextPose[1] = M_PI - beta - gamma;
         nextPose[2] = 0;
         nextPose[3] = alpha + beta;
-    }*/
+    }
 }
 
 double Arm::rotateBase(coord next_coord, double R)
