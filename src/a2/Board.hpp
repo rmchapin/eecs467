@@ -33,6 +33,7 @@ class Board
         int numFreeBalls;
         ImageProcessor *ip;
         Color playerColor;
+        Color opponentColor;
 
         void clearBoard();
         int findBoardIndex(coord ball);
@@ -55,6 +56,7 @@ class Board
         inline int isCenter(int sq);
         int isWin(int sq);
         int blocksWin(int sq);
+        int isFork(int sq);
         coord nextPlace();
 };
 

@@ -5,6 +5,7 @@ std::string COLOR_NAMES[] = {"GREEN", "RED", "YELLOW"};
 Board::Board(ImageProcessor *ip_, bool red) : ip(ip_)
 {
     playerColor = (red ? RED : GREEN);
+    opponentColor = (red ? GREEN : RED);
 }
 
 Board::~Board()
@@ -278,6 +279,16 @@ bool Board::gameOver()
         return true;
     }
 
+    bool full = true;
+    for (int u = 0; u < 9; u++)
+    {
+        if (board[u].ball == YELLOW)
+        {
+            full = false;
+            break;
+        }
+    }
+
     for (int g = 0; g < 3; g++)
     {
         bool hor = true, vert = true;
@@ -328,7 +339,7 @@ bool Board::gameOver()
 
     bool green_wins = (tdiag1 || tdiag2);
 
-    return (red_wins || green_wins);
+    return (full || red_wins || green_wins);
 }
 
 void Board::clearBoard()
@@ -417,21 +428,40 @@ inline int Board::isCenter(int sq)
         return 0;
 }
 
+int Board::isFork(int sq)
+{
+    Color compare[9] = {playerColor, YELLOW, YELLOW,
+                         YELLOW, opponentColor, YELLOW,
+                         YELLOW, YELLOW, YELLOW};
+
+    if (sq != 8)
+    {
+        return 0;
+    }
+
+    for (int w = 0; w < 9; w++)
+    {
+        if (board[w].ball != compare[w])
+        {
+            return 0;
+        }
+    }
+
+    return 4;
+}
+
 int Board::isWin(int sq)
 {
     board[sq].ball = playerColor;
-    int ret = (gameOver() ? 8 : 0);
+    int ret = (gameOver() ? 16 : 0);
     board[sq].ball = YELLOW;
     return ret;
 }
 
 int Board::blocksWin(int sq)
 {
-    if (playerColor == RED)
-        board[sq].ball = GREEN;
-    else
-        board[sq].ball = RED;
-    int ret = (gameOver() ? 4 : 0);
+    board[sq].ball = opponentColor;
+    int ret = (gameOver() ? 8 : 0);
     board[sq].ball = YELLOW;
     return ret;
 }
@@ -447,8 +477,9 @@ coord Board::nextPlace()
         {
             value += isWin(f);
             value += blocksWin(f);
-            value += isCenter(f);
+            value += isFork(f);
             value += isCorner(f);
+            value += isCenter(f);
 
             if (value > max_value)
             {
