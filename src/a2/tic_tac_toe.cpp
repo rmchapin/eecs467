@@ -67,6 +67,9 @@ command_loop (void *data)
     const int hz = 10;
 
 	state->board->printInit();
+	state->arm->homeServos(true);
+	state->arm->publish();
+	state->arm->waitForMove();
 
     while (1)
 	{

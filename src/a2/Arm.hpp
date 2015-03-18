@@ -50,12 +50,12 @@ class Arm
         std::string command_channel;
         
         // helper functions 
-        double rotateBase(coord next_coord);
+        double rotateBase(coord next_coord, double R);
         double dist(coord next_coord);
         bool withinBounds();
         bool withinBoundsSingle(int i);
     public:
-        Arm(); // for testing only
+        Arm();
         ~Arm();
 
         // getters and setters
@@ -63,7 +63,8 @@ class Arm
         void setCommandChannel(std::string command_channel_);
         bool getAtNextPosition();
         
-        void calculateNextPosition(coord ball_coord, double *nextPose);
+        //void calculateNextPosition(coord ball_coord, double *nextPose);
+	void calculateNextPosition(coord ball_coord, double *nextPose, bool grab);
         void updateCurrentPosition(double pos, int index);
         void publish();
 
@@ -72,7 +73,8 @@ class Arm
         void closeHand();
         void openHand();
         void grabBall(coord ballCoord);
-        void moveToPosition(coord ballCoord);
+        //void moveToPosition(coord ballCoord);
+	void moveToPosition(coord ballCoord, bool grab);
         void placeBall(coord ballCoord);
         void waitForMove();
 

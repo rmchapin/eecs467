@@ -12,10 +12,11 @@
 #define d_2 103
 #define d_3 102
 #define d_4 215
+#define d_4_grab 205
 #define h_ 45
 
 #define close_fingers 1.65
-#define open_fingers 1.35
+#define open_fingers 1.05
 #define MAX_SPEED 0.05
 #define MAX_TORQUE 0.7
 #define y_test_offset 15

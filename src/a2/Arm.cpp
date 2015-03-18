@@ -94,10 +94,10 @@ void Arm::openHand()
     nextPosition[5] = open_fingers;
 }
 
-void Arm::moveToPosition(coord ballCoord)
+void Arm::moveToPosition(coord ballCoord, bool grab)
 {
     double nextPose[6];
-    calculateNextPosition(ballCoord, nextPose);
+    calculateNextPosition(ballCoord, nextPose, grab);
 
     // first, move servo 0
     for(int i = 1; i < 6; i++)
@@ -111,7 +111,6 @@ void Arm::moveToPosition(coord ballCoord)
     // if close position, move servo 1 to -0.6 first
     if(nextPose[1] > -0.40 && nextPose[1] < 0.40)
     {
-        std::cout << "WHAT THE SHIT" << std::endl;
         nextPosition[1] = -0.6;
         publish();
         waitForMove();
@@ -134,7 +133,7 @@ void Arm::moveToPosition(coord ballCoord)
 void Arm::grabBall(coord ballCoord)
 {
     // move to ball
-    moveToPosition(ballCoord);
+    moveToPosition(ballCoord, true);
 
     // grab ball
     closeHand();
@@ -144,10 +143,8 @@ void Arm::grabBall(coord ballCoord)
     // return to home
     // if arm is at one of the close positions, move back, then home servo 3, then home
     // rest of servos
-    std::cout << "FOR SERIOUS THOUGH" << std::endl;
     if(currentPosition[1] > -0.40 && currentPosition[1] < 0.40)
     {
-        std::cout << "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" << std::endl;
         nextPosition[1] = -0.6;
     }
     else
@@ -170,7 +167,7 @@ void Arm::grabBall(coord ballCoord)
 void Arm::placeBall(coord ballCoord)
 {
     // move to ball
-    moveToPosition(ballCoord);
+    moveToPosition(ballCoord, false);
 
     // drop ball
     openHand();
@@ -180,10 +177,8 @@ void Arm::placeBall(coord ballCoord)
     // return to home
     // if arm is at one of the close positions, move back, then home servo 3, then home
     // rest of servos
-    std::cout << "WHAT THE ACTUAL FUCK IS GOING ON" << std::endl;
     if(currentPosition[1] > -0.40 && currentPosition[1] < 0.40)
     {
-        std::cout << "WWWWWHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE" << std::endl;
         nextPosition[1] = -0.6;
     }
     else
@@ -203,23 +198,29 @@ void Arm::placeBall(coord ballCoord)
     waitForMove();
 }
 
-void Arm::calculateNextPosition(coord ball_coord, double *nextPose)
+void Arm::calculateNextPosition(coord ball_coord, double *nextPose, bool grab)
 {
-    // figure out angle of ball and move there:
-    nextPose[0] = rotateBase(ball_coord);
+    // calculate R
+    double R = dist(ball_coord);
+    
+	// figure out angle of ball and move there:
+    nextPose[0] = rotateBase(ball_coord, R);
     nextPose[4] = 0;
 
-    // calculate R
-    double R = dist(ball_coord) - 5;
+	int d4 = d_4;
+	if(grab)
+	{
+		d4 = d_4_grab;
+	}
 
     // Calculate M
-    double M = sqrt(R*R + (d_4-d_1)*(d_4-d_1));
+    double M = sqrt(R*R + (d4-d_1)*(d4-d_1));
     std::cout << "M: " << M << std::endl;
 
     /*if(M < (d_2+d_3)) // if not reaching too far
     {*/
         // calculate inner angles
-        double alpha = atan2(d_4-d_1, R);
+        double alpha = atan2(d4-d_1, R);
         double beta = facos((-d_3*d_3 + d_2*d_2 + M*M)/(2*d_2*M));
         double gamma = facos((-M*M+d_2*d_2+d_3*d_3)/(2*d_2*d_3));
 
@@ -251,10 +252,11 @@ void Arm::calculateNextPosition(coord ball_coord, double *nextPose)
     }*/
 }
 
-double Arm::rotateBase(coord next_coord)
+double Arm::rotateBase(coord next_coord, double R)
 {
     double theta = atan2(next_coord.x, next_coord.y);
-    return (M_PI/2) - theta;
+    theta = (M_PI/2) - theta;
+	return theta + ((double)20/R);
 }
 
 double Arm::dist(coord next_coord)
