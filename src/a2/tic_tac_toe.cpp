@@ -169,8 +169,8 @@ main (int argc, char *argv[])
     state->cmds.commands.reserve(6);
 
     state->gopt = gopt;
-    state->command_channel = std::string("COMMAND_CHANNEL");
-    state->status_channel = std::string("STATUS_CHANNEL");
+    state->command_channel = std::string("ARM_COMMAND");
+    state->status_channel = std::string("ARM_STATUS");
 
 	if (getopt_get_bool(gopt, "red"))
 	{
