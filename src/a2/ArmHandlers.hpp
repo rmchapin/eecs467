@@ -49,6 +49,7 @@ class TurnLCMHandler
 		bool red;
         bool *my_turn;
 		int *turn_no;
+int counter;
 
     public:
         TurnLCMHandler(bool *t, bool r, int *num_ptr)
@@ -56,13 +57,19 @@ class TurnLCMHandler
 			my_turn = t;
 			red = r;
 			turn_no = num_ptr;
+counter = 0;
 		}
         ~TurnLCMHandler() { }
         void handleTurnMsg(const lcm::ReceiveBuffer *rbuf,
                                const std::string& channel,
                                const ttt_turn_t *msg)
         {
-            if ((red) && (msg->turn == *turn_no))
+		           counter++;
+if (counter%5 == 0)
+{
+	std::cerr << "they sent turn #" << msg->turn << std::endl;
+} 
+		if ((red) && (msg->turn == *turn_no))
 			{            
 				*my_turn = true;
 			}

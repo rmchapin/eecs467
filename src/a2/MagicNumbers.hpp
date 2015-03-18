@@ -1,11 +1,11 @@
 #ifndef MAGIC_NUMBERS_HPP
 #define MAGIC_NUMBERS_HPP
 
-#define wx1 -220
+#define wx1 -215
 #define wy1 89
-#define wx2 -38
+#define wx2 -33
 #define wy2 89
-#define wx3 -38
+#define wx3 -33
 #define wy3 -89
 
 #define d_1 120

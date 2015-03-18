@@ -72,17 +72,10 @@ command_loop (void *data)
 	state->arm->waitForMove();
 
     while (1)
-	{
-		//remove this after testing
-		if (!state->am_i_red)
-		{
-			state->my_turn = true;
-		}
-        
+	{       
 		if (state->my_turn)
 		{
 			std::cout << "it's our turn" << std::endl;
-			state->my_turn = false;
 
 			//trigger blob
 			maebot_pose_t send;
@@ -110,17 +103,11 @@ command_loop (void *data)
 			}
 			else
 			{
-				//state->board->nextPick();
-				//state->board->nextPlace();
 				state->arm->grabBall(state->board->nextPick());
 				state->arm->placeBall(state->board->nextPlace());
 				state->turn_num++;
+				state->my_turn = false;
 			}
-			
-			std::cout << "make your move, HUMAN!" << std::endl;
-			std::string trash;
-			std::cin >> trash;
-			state->my_turn = true;
 		}
 	
         usleep (1000000/hz);
