@@ -108,6 +108,12 @@ command_loop (void *data)
 				state->turn_num++;
 				state->my_turn = false;
 			}
+
+			if (state->board->gameOver())
+			{
+				std::cout << "game complete!" << std::endl;
+				exit(0);
+			}
 		}
 	
         usleep (1000000/hz);
