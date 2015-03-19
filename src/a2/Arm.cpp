@@ -43,7 +43,7 @@ void Arm::updateCurrentPosition(double pos, int index)
         atNextPosition = true;
         pthread_cond_signal(&nextPositionCV);
     }
-    std::cout << "Current position: " << std::endl;
+    /*std::cout << "Current position: " << std::endl;
     for(int i = 0; i < 6; i++)
     {
         std::cout << "Servo " << i << ": " << currentPosition[i] << std::endl;
@@ -52,7 +52,7 @@ void Arm::updateCurrentPosition(double pos, int index)
     for(int i = 0; i < 6; i++)
     {
         std::cout << "Servo " << i << ": " << nextPosition[i] << std::endl;
-    }
+    }*/
     pthread_mutex_unlock(&nextPositionMutex);
 }
 
@@ -62,7 +62,7 @@ bool Arm::withinBounds()
     {
         if(!withinBoundsSingle(i))
         {
-            std::cout << "servo" << i << "outside bounds!!" << std::endl;
+            //std::cout << "servo" << i << "outside bounds!!" << std::endl;
             return false;
         }
     }

@@ -114,6 +114,11 @@ command_loop (void *data)
 				std::cout << "game complete!" << std::endl;
 				exit(0);
 			}
+
+			/*std::cout << "make your move, HUMAN!" << std::endl;
+			std::string trash;
+			std::cin >> trash;
+			state->my_turn = true;*/
 		}
 	
         usleep (1000000/hz);
